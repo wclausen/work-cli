@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.wclausen.work.config.RealConfigReaderTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2020-05-27T20:33:37" hostname="MacBookAir.local" time="0.087">
+  <properties/>
+  <testcase name="GIVEN malformed json in file WHEN reading config THEN reports unable to parse json" classname="com.wclausen.work.config.RealConfigReaderTest" time="0.081"/>
+  <testcase name="GIVEN correct json in file WHEN reading config THEN returns result" classname="com.wclausen.work.config.RealConfigReaderTest" time="0.003"/>
+  <testcase name="GIVEN empty file WHEN reading config THEN reports unable to parse json" classname="com.wclausen.work.config.RealConfigReaderTest" time="0.001"/>
+  <testcase name="GIVEN missing file WHEN reading config THEN reports unable to open" classname="com.wclausen.work.config.RealConfigReaderTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
