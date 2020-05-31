@@ -1,60 +1,67 @@
 package com.wclausen.work.command.init
 
 import com.github.michaelbull.result.Ok
-import com.github.michaelbull.result.Result
 import com.squareup.workflow.RenderContext
 import com.squareup.workflow.Snapshot
+import com.squareup.workflow.StatefulWorkflow
+import com.squareup.workflow.Worker
+import com.squareup.workflow.WorkflowAction
 import com.squareup.workflow.action
 import com.wclausen.work.command.base.Command
-import com.wclausen.work.command.base.StatefulCommandWorkflow
+import com.wclausen.work.command.base.CommandOutputWorkflow
+import com.wclausen.work.command.base.Output
 import com.wclausen.work.config.Config
+import com.wclausen.work.config.ConfigCreator
 import com.wclausen.work.config.JiraConfig
-import javax.inject.Inject
+import com.wclausen.work.kotlinext.Do
 
-class InitWorkflow @Inject constructor() : StatefulCommandWorkflow<
-        Unit,
-        InitWorkflow.InitializationState,
-        Result<Config, InitWorkflow.InitializationError>>() {
+class InitWorkflow : CommandOutputWorkflow<Unit, InitWorkflow.State>() {
 
     companion object {
         const val GET_USERNAME_PROMPT = "Please enter your jira username (e.g. wclausen@dropbox.com)"
         const val GET_JIRA_API_TOKEN_PROMPT = "Please enter your jira api token"
     }
 
-    private var config = Config(JiraConfig("", ""))
-
-    sealed class InitializationState {
-        object GetUsername : InitializationState()
-        object GetPassword : InitializationState()
+    sealed class State() {
+        object GetJiraUserName : State()
+        data class GetJiraPassword(val jiraUsername: String) : State()
     }
 
-    override fun initialState(props: Unit, snapshot: Snapshot?): InitializationState {
-        return InitializationState.GetUsername
+    override fun initialState(props: Unit, snapshot: Snapshot?): State {
+        return State.GetJiraUserName
     }
 
-    override fun render(props: Unit, state: InitializationState, context: RenderContext<InitializationState, Result<Config, InitializationError>>): Command {
-        return when (state) {
-            InitializationState.GetUsername -> Command.Prompt(GET_USERNAME_PROMPT) { jiraUsername ->
-                config = config.copy(jira = config.jira.copy(jira_email = jiraUsername))
-                context.actionSink.send(action {
-                    nextState = InitializationState.GetPassword
-                })
+    override fun render(props: Unit, state: State, context: RenderContext<State, Output>) {
+        Do exhaustive when (state) {
+            State.GetJiraUserName -> context.outputPromptForInfo(GET_USERNAME_PROMPT) { username ->
+                action {
+                    nextState = State.GetJiraPassword(username)
+                }
             }
-            InitializationState.GetPassword -> Command.Prompt(GET_JIRA_API_TOKEN_PROMPT) { jiraApiToken ->
-                context.actionSink.send(action {
-                    setOutput(Ok(config.copy(
-                        jira = config.jira.copy(jira_api_token = jiraApiToken)))) })
+            is State.GetJiraPassword -> context.outputPromptForInfo(GET_JIRA_API_TOKEN_PROMPT) { token ->
+                action {
+                    setOutput(Output.Final(Ok(Config(JiraConfig(state.jiraUsername, token)))))
+                }
             }
         }
     }
 
-    // Not currently used, but here for future error handling/standardization across tasks
-    class InitializationError{
-
+    private fun RenderContext<State, Output>.outputPromptForInfo(
+        promptText: String,
+        onResponse: (String) -> WorkflowAction<State, Output>
+    ) {
+        runningWorker(Worker.from {
+            Command.Prompt(promptText) { response ->
+                this.actionSink.send(onResponse.invoke(response))
+            }
+        }, promptText) {
+            action {
+                setOutput(Output.InProgress(it))
+            }
+        }
     }
 
-    override fun snapshotState(state: InitializationState): Snapshot {
+    override fun snapshotState(state: State): Snapshot {
         return Snapshot.EMPTY
     }
-
 }
