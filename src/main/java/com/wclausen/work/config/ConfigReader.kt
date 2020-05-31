@@ -14,7 +14,7 @@ import javax.inject.Inject
 
 interface ConfigReader {
 
-    fun getConfigFields(): Result<Config, ConfigLoadingError>
+    fun getConfig(): Result<Config, ConfigLoadingError>
 }
 
 sealed class ConfigLoadingError(val message: String) {
@@ -34,7 +34,7 @@ class RealConfigReader @Inject constructor(private val configFile: File) : Confi
 
     }
 
-    override fun getConfigFields(): Result<Config, ConfigLoadingError> {
+    override fun getConfig(): Result<Config, ConfigLoadingError> {
         return openFile()
             .andThen(::readLines)
             .andThen(::parseJson)

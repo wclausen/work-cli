@@ -1,9 +1,10 @@
 package com.wclausen.work.command.init
 
+import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
+import com.github.michaelbull.result.mapBoth
 import com.squareup.workflow.RenderContext
 import com.squareup.workflow.Snapshot
-import com.squareup.workflow.StatefulWorkflow
 import com.squareup.workflow.Worker
 import com.squareup.workflow.WorkflowAction
 import com.squareup.workflow.action
@@ -15,16 +16,19 @@ import com.wclausen.work.config.ConfigCreator
 import com.wclausen.work.config.JiraConfig
 import com.wclausen.work.kotlinext.Do
 
-class InitWorkflow : CommandOutputWorkflow<Unit, InitWorkflow.State>() {
+class CreateConfigWorkflow(
+    private val configCreator: ConfigCreator) : CommandOutputWorkflow<Unit, CreateConfigWorkflow.State>() {
 
     companion object {
         const val GET_USERNAME_PROMPT = "Please enter your jira username (e.g. wclausen@dropbox.com)"
         const val GET_JIRA_API_TOKEN_PROMPT = "Please enter your jira api token"
+        const val SAVING_CONFIG_MESSAGE = "Saving config file at: "
     }
 
     sealed class State() {
         object GetJiraUserName : State()
         data class GetJiraPassword(val jiraUsername: String) : State()
+        data class SavingConfigFile(val config: Config) : State()
     }
 
     override fun initialState(props: Unit, snapshot: Snapshot?): State {
@@ -40,8 +44,11 @@ class InitWorkflow : CommandOutputWorkflow<Unit, InitWorkflow.State>() {
             }
             is State.GetJiraPassword -> context.outputPromptForInfo(GET_JIRA_API_TOKEN_PROMPT) { token ->
                 action {
-                    setOutput(Output.Final(Ok(Config(JiraConfig(state.jiraUsername, token)))))
+                    nextState = State.SavingConfigFile(Config(JiraConfig(state.jiraUsername, token)))
                 }
+            }
+            is State.SavingConfigFile -> {
+                context.saveConfig(state.config)
             }
         }
     }
@@ -61,7 +68,29 @@ class InitWorkflow : CommandOutputWorkflow<Unit, InitWorkflow.State>() {
         }
     }
 
+    private fun RenderContext<State, Output>.saveConfig(
+        config: Config
+    ) {
+        runningWorker(Worker.create {
+            emit(Output.InProgress(Command.Echo(SAVING_CONFIG_MESSAGE + configCreator.configLocation)))
+            configCreator.createConfigFile(config)
+                .mapBoth(
+                    success = {
+                        emit(Output.Final(Ok(config)))
+                    }, failure = {
+                        emit(Output.Final(Err(it)))
+                    }
+                )
+        }, "save_config") { output ->
+            action {
+                setOutput(output)
+            }
+        }
+    }
+
     override fun snapshotState(state: State): Snapshot {
         return Snapshot.EMPTY
     }
 }
+
+
