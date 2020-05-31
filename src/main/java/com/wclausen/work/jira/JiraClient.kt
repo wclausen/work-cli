@@ -23,7 +23,7 @@ class JiraCreds(val username: String, val apiToken: String) {
 }
 
 val interceptor = object : Interceptor {
-    val creds = RealConfigReader(ConfigFileInfo.configFile).getConfigFields().map {
+    val creds = RealConfigReader(ConfigFileInfo.configFile).getConfig().map {
         it.toJiraCreds()
     }.get()
 

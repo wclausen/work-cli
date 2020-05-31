@@ -19,14 +19,14 @@ class RealConfigReaderTest {
     fun `GIVEN missing file WHEN reading config THEN reports unable to open`() {
         val missingFile = tempFolder.newFile("missing_file")
         missingFile.delete()
-        val error = RealConfigReader(missingFile).getConfigFields().getError()!!
+        val error = RealConfigReader(missingFile).getConfig().getError()!!
         assertThat(error.message).contains(RealConfigReader.UNABLE_TO_OPEN_CONFIG_FILE_MESSAGE)
     }
 
     @Test
     fun `GIVEN empty file WHEN reading config THEN reports unable to parse json`() {
         val emptyFile = tempFolder.newFile("empty_file")
-        val error = RealConfigReader(emptyFile).getConfigFields().getError()!!
+        val error = RealConfigReader(emptyFile).getConfig().getError()!!
         assertThat(error.message).contains(RealConfigReader.FAILED_TO_PARSE_JSON_MESSAGE)
     }
 
@@ -37,7 +37,7 @@ class RealConfigReaderTest {
             .buffer()
             .writeUtf8("{ \"a_field\": \"some_value\"}") // wrong json contents
             .close()
-        val error = RealConfigReader(badJsonFile).getConfigFields().getError()!!
+        val error = RealConfigReader(badJsonFile).getConfig().getError()!!
         assertThat(error.message).contains(RealConfigReader.FAILED_TO_PARSE_JSON_MESSAGE)
     }
 
@@ -49,7 +49,7 @@ class RealConfigReaderTest {
             .buffer()
             .writeUtf8(expectedConfig.asJson()) // wrong json contents
             .close()
-        val config = RealConfigReader(configFile).getConfigFields().get()!!
+        val config = RealConfigReader(configFile).getConfig().get()!!
         assertThat(config).isEqualTo(expectedConfig)
     }
 
