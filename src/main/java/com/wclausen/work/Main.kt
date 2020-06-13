@@ -9,20 +9,13 @@ import com.wclausen.work.command.done.DoneCommand
 import com.wclausen.work.command.init.InitCommand
 import com.wclausen.work.command.start.StartCommand
 import com.wclausen.work.command.update.UpdateCommand
+import com.wclausen.work.inject.DaggerAppComponent
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
+
+val appComponent = DaggerAppComponent.create()
 
 @ExperimentalCoroutinesApi
 @FlowPreview
 fun main(args: Array<String>) =
-    WorkCommand()
-        .subcommands(
-            InitCommand(),
-            StartCommand(),
-            UpdateCommand(),
-            CommentCommand(),
-            CommitCommand(),
-            DiffCommand(),
-            DoneCommand()
-        )
-        .main(args)
+    appComponent.workCommand.main(args)

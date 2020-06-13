@@ -1,20 +1,22 @@
 package com.wclausen.work.command.init
 
+import com.github.michaelbull.result.Err
+import com.github.michaelbull.result.expectError
 import com.github.michaelbull.result.get
 import com.google.common.truth.Truth.assertThat
-import com.squareup.workflow.testing.WorkflowTester
 import com.squareup.workflow.testing.testFromStart
 import com.wclausen.work.command.base.Command
 import com.wclausen.work.command.base.Output
 import com.wclausen.work.config.Config
+import com.wclausen.work.config.ConfigCreator
 import com.wclausen.work.fake.FakeConfigCreator
-import com.wclausen.work.fake.FakeConfigReader
 import com.wclausen.work.workflowext.assertIsPrompt
 import com.wclausen.work.workflowext.first
 import com.wclausen.work.workflowext.then
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import java.io.IOException
 
 class CreateConfigWorkflowTest {
 
@@ -44,9 +46,66 @@ class CreateConfigWorkflowTest {
                     token = expected_token)
         }
     }
+
+    @Test
+    fun `GIVEN io error from config creation WHEN running workflow THEN reports error`() {
+        // Test of entire flow, mostly to show the kinds of tests possible with workflow :)
+        val expected_username = "some_username"
+        val expected_token = "some_token"
+        val tempConfigPath = temporaryFolder.newFile().toPath()
+        val throwingConfigCreator = FakeConfigCreator(tempConfigPath)
+        throwingConfigCreator.creationResult = Err(ConfigCreator.Error.FailedToCreateConfig(tempConfigPath, IOException()))
+        val createConfigWorkflow = CreateConfigWorkflow(throwingConfigCreator)
+        createConfigWorkflow.testFromStart {
+            first()
+                .asksForUsername()
+                .whenUsernameProvided(expected_username)
+            then()
+                .asksForToken()
+                .whenTokenProvided(expected_token)
+            then()
+                .emitsSavingFileMessage()
+            then()
+                .emitsError()
+                .withMessage("Failed to create config file")
+        }
+    }
+
+    @Test
+    fun `GIVEN io error writing config data WHEN running workflow THEN reports error`() {
+        // Test of entire flow, mostly to show the kinds of tests possible with workflow :)
+        val expected_username = "some_username"
+        val expected_token = "some_token"
+        val tempConfigPath = temporaryFolder.newFile().toPath()
+        val throwingConfigCreator = FakeConfigCreator(tempConfigPath)
+        throwingConfigCreator.creationResult = Err(ConfigCreator.Error.FailedToWriteToConfigFile(tempConfigPath, IOException()))
+        val createConfigWorkflow = CreateConfigWorkflow(throwingConfigCreator)
+        createConfigWorkflow.testFromStart {
+            first()
+                .asksForUsername()
+                .whenUsernameProvided(expected_username)
+            then()
+                .asksForToken()
+                .whenTokenProvided(expected_token)
+            then()
+                .emitsSavingFileMessage()
+            then()
+                .emitsError()
+                .withMessage("Failed to write config data")
+        }
+    }
 }
 
-private fun Output.emitsSavingFileMessage() {
+private fun Throwable.withMessage(expected: String) {
+    assertThat(message).contains(expected)
+}
+
+private fun <T> Output<T>.emitsError(): Throwable {
+    assertThat(this).isInstanceOf(Output.Final::class.java)
+    return (this as Output.Final).result.expectError { "expected error but not present" }
+}
+
+private fun <T> Output<T>.emitsSavingFileMessage() {
     assertThat(this).isInstanceOf(Output.InProgress::class.java)
     val command = (this as Output.InProgress).command
     assertThat(command).isInstanceOf(Command.Echo::class.java)
@@ -59,19 +118,19 @@ private fun Config.withDetails(username: String, token : String) {
     assertThat(jira.jira_api_token).isEqualTo(token)
 }
 
-private fun Output.emitsConfig(): Config {
+private fun <T> Output<T>.emitsConfig(): Config {
     assertThat(this).isInstanceOf(Output.Final::class.java)
-    return (this as Output.Final<*>).result.get() as Config
+    return (this as Output.Final<T>).result.get() as Config
 }
 
 private fun Command.Prompt.whenTokenProvided(token: String) = nextAction.invoke(token)
 
-private fun Output.asksForToken(): Command.Prompt {
+private fun <T> Output<T>.asksForToken(): Command.Prompt {
     return assertIsPrompt(CreateConfigWorkflow.GET_JIRA_API_TOKEN_PROMPT)
 }
 
 private fun Command.Prompt.whenUsernameProvided(username: String) = nextAction.invoke(username)
 
-private fun Output.asksForUsername(): Command.Prompt {
+private fun <T> Output<T>.asksForUsername(): Command.Prompt {
     return assertIsPrompt(CreateConfigWorkflow.GET_USERNAME_PROMPT)
 }
