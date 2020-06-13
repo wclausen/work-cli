@@ -4,6 +4,7 @@ import com.github.michaelbull.result.Err
 import com.squareup.workflow.testing.testFromStart
 import com.wclausen.work.command.init.CreateConfigWorkflow
 import com.wclausen.work.config.ConfigLoadingError
+import com.wclausen.work.fake.FakeCommandWorkflow
 import com.wclausen.work.fake.FakeConfigCreator
 import com.wclausen.work.fake.FakeConfigReader
 import com.wclausen.work.workflowext.assertContainsMessage
@@ -34,7 +35,8 @@ class MainWorkflowTest {
         configReader.result = FakeConfigReader.okConfig
         MainWorkflow(
             configReader,
-            CreateConfigWorkflow(FakeConfigCreator(temporaryFolder.newFile().toPath()))
+            CreateConfigWorkflow(FakeConfigCreator(temporaryFolder.newFile().toPath())),
+            FakeCommandWorkflow()
         ).testFromStart {
             first()
                 .assertContainsMessage("Running command...")
@@ -46,7 +48,8 @@ class MainWorkflowTest {
         configReader.result = Err(configLoadingError)
         MainWorkflow(
             configReader,
-            CreateConfigWorkflow(FakeConfigCreator(temporaryFolder.newFile().toPath()))
+            CreateConfigWorkflow(FakeConfigCreator(temporaryFolder.newFile().toPath())),
+            FakeCommandWorkflow()
         ).testFromStart {
             first()
                 .assertIsPrompt(CreateConfigWorkflow.GET_USERNAME_PROMPT)

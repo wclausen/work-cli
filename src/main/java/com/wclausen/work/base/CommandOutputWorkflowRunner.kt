@@ -35,10 +35,9 @@ import javax.inject.Inject
  *
  */
 @ExperimentalCoroutinesApi
-class CommandOutputWorkflowRunner<in PropsT, StateT>
-@Inject constructor(
+abstract class CommandOutputWorkflowRunner<in PropsT, StateT, OutputT> constructor(
     private val inputs: BroadcastChannel<PropsT>,
-    private val commandWorkflow: CommandOutputWorkflow<PropsT, StateT>
+    private val commandWorkflow: CommandOutputWorkflow<PropsT, StateT, OutputT>
 ) {
 
     @FlowPreview

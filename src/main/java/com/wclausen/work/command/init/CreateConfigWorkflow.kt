@@ -2,6 +2,7 @@ package com.wclausen.work.command.init
 
 import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
+import com.github.michaelbull.result.Result
 import com.github.michaelbull.result.mapBoth
 import com.squareup.workflow.RenderContext
 import com.squareup.workflow.Snapshot
@@ -17,7 +18,7 @@ import com.wclausen.work.config.JiraConfig
 import com.wclausen.work.kotlinext.Do
 
 class CreateConfigWorkflow(
-    private val configCreator: ConfigCreator) : CommandOutputWorkflow<Unit, CreateConfigWorkflow.State>() {
+    private val configCreator: ConfigCreator) : CommandOutputWorkflow<Unit, CreateConfigWorkflow.State, Config>() {
 
     companion object {
         const val GET_USERNAME_PROMPT = "Please enter your jira username (e.g. wclausen@dropbox.com)"
@@ -35,7 +36,7 @@ class CreateConfigWorkflow(
         return State.GetJiraUserName
     }
 
-    override fun render(props: Unit, state: State, context: RenderContext<State, Output>) {
+    override fun render(props: Unit, state: State, context: RenderContext<State, Output<Config>>) {
         Do exhaustive when (state) {
             State.GetJiraUserName -> context.outputPromptForInfo(GET_USERNAME_PROMPT) { username ->
                 action {
@@ -53,9 +54,9 @@ class CreateConfigWorkflow(
         }
     }
 
-    private fun RenderContext<State, Output>.outputPromptForInfo(
+    private fun RenderContext<State, Output<Config>>.outputPromptForInfo(
         promptText: String,
-        onResponse: (String) -> WorkflowAction<State, Output>
+        onResponse: (String) -> WorkflowAction<State, Output<Config>>
     ) {
         runningWorker(Worker.from {
             Command.Prompt(promptText) { response ->
@@ -68,7 +69,7 @@ class CreateConfigWorkflow(
         }
     }
 
-    private fun RenderContext<State, Output>.saveConfig(
+    private fun RenderContext<State, Output<Config>>.saveConfig(
         config: Config
     ) {
         runningWorker(Worker.create {

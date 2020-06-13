@@ -9,20 +9,20 @@ import com.wclausen.work.command.base.Output
 fun <PropsT, OutputT : Any, RenderingT> WorkflowTester<PropsT, OutputT, RenderingT>.first(): OutputT = awaitNextOutput()
 fun <PropsT, OutputT : Any, RenderingT> WorkflowTester<PropsT, OutputT, RenderingT>.then(): OutputT = awaitNextOutput()
 
-fun Output.assertIsPrompt(expectedText: String): Command.Prompt {
+fun <T> Output<T>.assertIsPrompt(expectedText: String): Command.Prompt {
     val output = this as Output.InProgress
     val prompt = output.command as Command.Prompt
     assertThat(prompt.prompt).isEqualTo(expectedText)
     return prompt
 }
 
-fun Output.assertIsMessage(expectedText: String) {
+fun <T> Output<T>.assertIsMessage(expectedText: String) {
     val output = this as Output.InProgress
     val echo = output.command as Command.Echo
     assertThat(echo.output).isEqualTo(expectedText)
 }
 
-fun Output.assertContainsMessage(expectedText: String) {
+fun <T> Output<T>.assertContainsMessage(expectedText: String) {
     val output = this as Output.InProgress
     val echo = output.command as Command.Echo
     assertThat(echo.output).contains(expectedText)

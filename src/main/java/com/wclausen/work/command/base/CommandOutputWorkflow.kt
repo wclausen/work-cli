@@ -10,11 +10,11 @@ import com.squareup.workflow.StatefulWorkflow
  * [Command], the [CommandOutputWorkflowRunner] will execute it. When the output is a final result,
  * it will be handled by the parent workflow and indicates the child has no more work left to do.
  */
-sealed class Output {
+sealed class Output<out T> {
 
-    data class InProgress(val command: Command) : Output()
+    data class InProgress(val command: Command) : Output<Nothing>()
 
-    data class Final<T>(val result: Result<T, *>) : Output()
+    data class Final<T>(val result: Result<T, Throwable>) : Output<T>()
 }
 
 /**
@@ -23,4 +23,4 @@ sealed class Output {
  * Note, eventually this is intended to replace the CommandWorkflow and once that happens
  * the name of this typealias will change to CommandWorkflow
  */
-typealias CommandOutputWorkflow<PropsT, StateT> = StatefulWorkflow<PropsT, StateT, Output, Unit>
+typealias CommandOutputWorkflow<PropsT, StateT, OutputT> = StatefulWorkflow<PropsT, StateT, Output<OutputT>, Unit>
