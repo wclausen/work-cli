@@ -7,12 +7,13 @@ import com.squareup.workflow.action
 import com.wclausen.work.command.base.Command
 import com.wclausen.work.command.base.CommandOutputWorkflow
 import com.wclausen.work.command.base.Output
+import com.wclausen.work.config.Config
 
-class FakeCommandWorkflow : CommandOutputWorkflow<Unit, Unit, Unit>() {
-    override fun initialState(props: Unit, snapshot: Snapshot?) {
+class FakeCommandWorkflow : CommandOutputWorkflow<Config, Unit, Unit>() {
+    override fun initialState(props: Config, snapshot: Snapshot?) {
     }
 
-    override fun render(props: Unit, state: Unit, context: RenderContext<Unit, Output<Unit>>) {
+    override fun render(props: Config, state: Unit, context: RenderContext<Unit, Output<Unit>>) {
         context.runningWorker(Worker.from {
             Unit
         }) {

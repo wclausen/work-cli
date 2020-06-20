@@ -3,7 +3,7 @@ package com.wclausen.work.command.comment
 import com.github.ajalt.clikt.core.CliktCommand
 import com.wclausen.work.base.CommandWorkflowRunner
 import com.wclausen.work.commands.comment.CommentWorkflow
-import com.wclausen.work.jira.jiraService
+import com.wclausen.work.jira.realJiraService
 import com.wclausen.work.task.RealTaskManager
 import kotlinx.coroutines.channels.ConflatedBroadcastChannel
 
@@ -21,7 +21,7 @@ class CommentCommand : CliktCommand(name = "comment") {
             println(
                 CommandWorkflowRunner(
                 ConflatedBroadcastChannel(Unit),
-                CommentWorkflow(RealTaskManager().getCurrentTask()!!, jiraService)
+                    CommentWorkflow(RealTaskManager().getCurrentTask()!!, realJiraService)
             ).run())
         }
 }

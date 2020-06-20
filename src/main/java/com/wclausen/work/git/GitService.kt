@@ -6,7 +6,7 @@ import org.eclipse.jgit.revwalk.RevCommit
 
 interface GitService {
 
-    fun checkout(branchName: String): Result<Ref, GitError>
+    suspend fun checkout(branchName: String): Result<Ref, GitError>
 
     fun commitProgress(message: String): RevCommit
 

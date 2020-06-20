@@ -12,7 +12,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Response
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
-import java.util.*
+import java.util.Base64
 
 class JiraCreds(val username: String, val apiToken: String) {
 
@@ -58,4 +58,4 @@ val retrofit = Retrofit.Builder()
         .client(httpClient)
         .build()
 
-val jiraService = retrofit.create(JiraService::class.java)
+val realJiraService = retrofit.create(JiraService::class.java)
