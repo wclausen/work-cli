@@ -12,19 +12,25 @@ import com.wclausen.work.command.init.CreateConfigWorkflow
 import com.wclausen.work.command.init.InitCommand
 import com.wclausen.work.command.init.NoOpCommandWorkflow
 import com.wclausen.work.command.start.StartCommand
+import com.wclausen.work.command.start.StartWorkflow
 import com.wclausen.work.command.update.UpdateCommand
 import com.wclausen.work.config.ConfigCreator
 import com.wclausen.work.config.ConfigFileInfo
 import com.wclausen.work.config.ConfigReader
 import com.wclausen.work.config.RealConfigCreator
 import com.wclausen.work.config.RealConfigReader
+import com.wclausen.work.git.GitService
+import com.wclausen.work.git.RealGitService
+import com.wclausen.work.jira.JiraService
+import com.wclausen.work.jira.realJiraService
 import com.wclausen.work.task.RealTaskManager
 import com.wclausen.work.task.TaskManager
 import dagger.Component
 import dagger.Module
 import dagger.Provides
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.channels.ConflatedBroadcastChannel
+import org.eclipse.jgit.api.Git
+import org.eclipse.jgit.lib.RepositoryBuilder
 import java.io.File
 
 @Module
@@ -43,31 +49,61 @@ class AppModule {
     fun configCreator(): ConfigCreator = RealConfigCreator()
 
     @Provides
+    fun jiraService(): JiraService = realJiraService
+
+    @Provides
+    fun gitClient(): Git {
+        val workingDir = File("/Users/wclausen/code/git_messaround")
+        val repo = RepositoryBuilder().findGitDir(workingDir).build()
+        return Git(repo)
+    }
+
+    @Provides
+    fun gitService(git: Git): GitService = RealGitService(git)
+
+    @Provides
     fun createConfigWorkflow(configCreator: ConfigCreator): CreateConfigWorkflow =
         CreateConfigWorkflow(configCreator)
 
     @Provides
-    fun initCommandWorkflow(configReader: ConfigReader, createConfigWorkflow: CreateConfigWorkflow): MainWorkflow<NoOpCommandWorkflow> =
+    fun initCommandWorkflow(
+        configReader: ConfigReader, createConfigWorkflow: CreateConfigWorkflow
+    ): MainWorkflow<NoOpCommandWorkflow> =
         MainWorkflow(configReader, createConfigWorkflow, NoOpCommandWorkflow())
 
     @ExperimentalCoroutinesApi
     @Provides
+    @InitCommandRunner
     fun initWorkflowRunner(initWorkflow: MainWorkflow<NoOpCommandWorkflow>): MainCommandOutputWorkflowRunner {
-        return MainCommandOutputWorkflowRunner(ConflatedBroadcastChannel(Unit), initWorkflow)
+        return MainCommandOutputWorkflowRunner(initWorkflow)
     }
 
     @Provides
-    fun workCommand(initCommand: InitCommand): WorkCommand =
-        WorkCommand()
-            .subcommands(
-                initCommand,
-                StartCommand(),
-                UpdateCommand(),
-                CommentCommand(),
-                CommitCommand(),
-                DiffCommand(),
-                DoneCommand()
-            )
+    fun startCommandWorkflow(
+        configReader: ConfigReader,
+        createConfigWorkflow: CreateConfigWorkflow,
+        startWorkflow: StartWorkflow
+    ): MainWorkflow<StartWorkflow> = MainWorkflow(configReader, createConfigWorkflow, startWorkflow)
+
+
+    @ExperimentalCoroutinesApi
+    @Provides
+    @StartCommandRunner
+    fun startWorkflowRunner(startWorkflow: MainWorkflow<StartWorkflow>): MainCommandOutputWorkflowRunner {
+        return MainCommandOutputWorkflowRunner(startWorkflow)
+    }
+
+    @Provides
+    fun workCommand(initCommand: InitCommand, startCommand: StartCommand): WorkCommand =
+        WorkCommand().subcommands(
+            initCommand,
+            startCommand,
+            UpdateCommand(),
+            CommentCommand(),
+            CommitCommand(),
+            DiffCommand(),
+            DoneCommand()
+        )
 
 }
 

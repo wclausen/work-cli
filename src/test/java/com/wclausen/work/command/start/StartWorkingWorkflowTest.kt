@@ -1,17 +1,11 @@
 package com.wclausen.work.command.start
 
-import com.github.michaelbull.result.getError
 import com.google.common.truth.Truth
-import com.squareup.workflow.testing.testFromStart
-import com.squareup.workflow.testing.testFromState
 import com.wclausen.work.command.base.Command
 import com.wclausen.work.fake.FakeGitService
 import com.wclausen.work.fake.FakeJiraService
-import com.wclausen.work.jira.api.model.IssueBean
-import com.wclausen.work.jira.api.model.JqlSearchResultIssueFields
 import kotlinx.coroutines.test.runBlockingTest
 import org.junit.Test
-import java.lang.Exception
 
 class StartWorkingWorkflowTest {
 
@@ -58,12 +52,17 @@ class StartWorkingWorkflowTest {
     @Test
     fun `GIVEN invalid task selection WHEN starting task THEN prompt for selection again`() = runBlockingTest {
         val taskSummaries = FakeJiraService().getTasksForCurrentUser().issues
-        StartWorkingWorkflow(null, FakeJiraService(), FakeGitService()).testFromState(StartWorkingWorkflow.StartTaskState.TasksLoaded(taskSummaries)) {
+        StartWorkingWorkflow(null, FakeJiraService(), FakeGitService()).testFromState(
+            StartWorkingWorkflow.State.TasksLoaded(taskSummaries)
+        ) {
             // Show tasks and ask for selection
-            val selectTasksRendering = awaitNextRendering(skipIntermediate = false) as Command.MultipleCommands
+            val selectTasksRendering =
+                awaitNextRendering(skipIntermediate = false) as Command.MultipleCommands
             Truth.assertThat(selectTasksRendering.commands.size).isEqualTo(2)
-            Truth.assertThat(selectTasksRendering.commands[0]).isInstanceOf(Command.Echo::class.java) // first show tasks
-            Truth.assertThat(selectTasksRendering.commands[1]).isInstanceOf(Command.Prompt::class.java) // ask for selection
+            Truth.assertThat(selectTasksRendering.commands[0])
+                .isInstanceOf(Command.Echo::class.java) // first show tasks
+            Truth.assertThat(selectTasksRendering.commands[1])
+                .isInstanceOf(Command.Prompt::class.java) // ask for selection
 
             // Pass invalid selection to prompt command
             val promptCommand = selectTasksRendering.commands[1] as Command.Prompt
@@ -71,20 +70,27 @@ class StartWorkingWorkflowTest {
 
             // Shows error, prompts again
             val repromptRendering = awaitNextRendering() as Command.MultipleCommands
-            Truth.assertThat(repromptRendering.commands[0]).isInstanceOf(Command.Echo::class.java) // shows error
-            Truth.assertThat(repromptRendering.commands[1]).isInstanceOf(Command.Prompt::class.java) // prompts again for selection
+            Truth.assertThat(repromptRendering.commands[0])
+                .isInstanceOf(Command.Echo::class.java) // shows error
+            Truth.assertThat(repromptRendering.commands[1])
+                .isInstanceOf(Command.Prompt::class.java) // prompts again for selection
         }
     }
 
     @Test
     fun `GIVEN valid task selection WHEN starting task THEN show selection and ask for current goal`() = runBlockingTest {
         val tasks = FakeJiraService().getTasksForCurrentUser().issues
-        StartWorkingWorkflow(null, FakeJiraService(), FakeGitService()).testFromState(StartWorkingWorkflow.StartTaskState.TaskSelected(tasks[0])) {
+        StartWorkingWorkflow(null, FakeJiraService(), FakeGitService()).testFromState(
+            StartWorkingWorkflow.State.TaskSelected(tasks[0])
+        ) {
             // Show tasks selection details, prompt for goal for the next work cycle
-            val selectTasksRendering = awaitNextRendering(skipIntermediate = false) as Command.MultipleCommands
+            val selectTasksRendering =
+                awaitNextRendering(skipIntermediate = false) as Command.MultipleCommands
             Truth.assertThat(selectTasksRendering.commands.size).isEqualTo(2)
-            Truth.assertThat(selectTasksRendering.commands[0]).isInstanceOf(Command.Echo::class.java) // first show tasks
-            Truth.assertThat(selectTasksRendering.commands[1]).isInstanceOf(Command.Prompt::class.java) // ask for selection
+            Truth.assertThat(selectTasksRendering.commands[0])
+                .isInstanceOf(Command.Echo::class.java) // first show tasks
+            Truth.assertThat(selectTasksRendering.commands[1])
+                .isInstanceOf(Command.Prompt::class.java) // ask for selection
 
             // Pass invalid selection to prompt command
             val promptCommand = selectTasksRendering.commands[1] as Command.Prompt
@@ -92,18 +98,20 @@ class StartWorkingWorkflowTest {
 
             // Shows error, prompts again
             val repromptRendering = awaitNextRendering() as Command.MultipleCommands
-            Truth.assertThat(repromptRendering.commands[0]).isInstanceOf(Command.Echo::class.java) // shows task selection
-            Truth.assertThat(repromptRendering.commands[1]).isInstanceOf(Command.Prompt::class.java) // prompt for goal
+            Truth.assertThat(repromptRendering.commands[0])
+                .isInstanceOf(Command.Echo::class.java) // shows task selection
+            Truth.assertThat(repromptRendering.commands[1])
+                .isInstanceOf(Command.Prompt::class.java) // prompt for goal
         }
     }
 
-    @Test
-    fun `GIVEN goal provided WHEN starting work THEN checkout branch with task name`() = runBlockingTest {
-        val fakeGitService = FakeGitService()
-        StartWorkingWorkflow(null, FakeJiraService(), fakeGitService).testFromState(StartWorkingWorkflow.StartTaskState.GoalProvided(
-            IssueBean("10001", "issue_url", "issue_key", JqlSearchResultIssueFields("issue_summary", "issue_description")))) {
-            //
-        }
-    }
+//    @Test
+//    fun `GIVEN goal provided WHEN starting work THEN checkout branch with task name`() = runBlockingTest {
+//        val fakeGitService = FakeGitService()
+//        StartWorkingWorkflow(null, FakeJiraService(), fakeGitService).testFromState(StartWorkingWorkflow.State.GoalProvided(
+//            IssueBean("10001", "issue_url", "issue_key", JqlSearchResultIssueFields("issue_summary", "issue_description")))) {
+//            //
+//        }
+//    }
 
 }

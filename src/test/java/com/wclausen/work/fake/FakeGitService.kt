@@ -1,5 +1,6 @@
 package com.wclausen.work.fake
 
+import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
 import com.wclausen.work.git.GitService
@@ -10,10 +11,11 @@ import org.eclipse.jgit.revwalk.RevCommit
 
 class FakeGitService : GitService {
 
+    var throws = false
     var lastBranchCheckedOut: String? = null
-    override fun checkout(branchName: String): Result<Ref, GitService.GitError> {
+    override suspend fun checkout(branchName: String): Result<Ref, GitService.GitError> {
         lastBranchCheckedOut = branchName
-        return Ok(FakeRef())
+        return if (!throws) Ok(FakeRef()) else Err(GitService.GitError.CheckoutFailedError(Exception()))
     }
 
     override fun commitProgress(message: String): RevCommit {
@@ -39,7 +41,7 @@ class FakeRef : Ref {
     }
 
     override fun getName(): String {
-        TODO("Not yet implemented")
+        return ""
     }
 
     override fun getStorage(): Ref.Storage {

@@ -3,7 +3,7 @@ package com.wclausen.work.base
 import com.wclausen.work.command.base.ExitCode
 import com.wclausen.work.command.base.MainWorkflow
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.channels.BroadcastChannel
+import kotlinx.coroutines.channels.ConflatedBroadcastChannel
 
 /**
  * Class that runs Command workflows that issue commands through the Workflow's OutputT.
@@ -19,6 +19,7 @@ import kotlinx.coroutines.channels.BroadcastChannel
  */
 @ExperimentalCoroutinesApi
 class MainCommandOutputWorkflowRunner constructor(
-    inputs: BroadcastChannel<Unit>,
     mainWorkflow: MainWorkflow<*>
-) : CommandOutputWorkflowRunner<Unit, MainWorkflow.State, ExitCode>(inputs, mainWorkflow)
+) : CommandOutputWorkflowRunner<Unit, MainWorkflow.State, ExitCode>(
+    ConflatedBroadcastChannel(Unit), mainWorkflow
+)

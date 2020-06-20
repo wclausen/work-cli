@@ -12,6 +12,7 @@ import com.wclausen.work.jira.api.model.JqlSearchResultIssueFields
 
 class FakeJiraService : JiraService {
 
+    var throws = false
     var lastCreateIssueData: IssueData? = null
     var createIssueResponse: ((IssueData) -> IssueResponse) = {
         lastCreateIssueData = it
@@ -19,12 +20,19 @@ class FakeJiraService : JiraService {
     }
 
     var getTasksForCurrentUserResponse: (() -> JqlSearchResult) = {
+        if (throws) {
+            throw Exception()
+        }
         JqlSearchResult(
-            listOf(IssueBean(
-                "10001",
-                "user_self",
-                "WORK-1",
-                JqlSearchResultIssueFields("Some task summary", "some task description"))))
+            listOf(
+                IssueBean(
+                    "10001",
+                    "user_self",
+                    "WORK-1",
+                    JqlSearchResultIssueFields("Some task summary", "some task description")
+                )
+            )
+        )
     }
 
     override suspend fun createIssue(data: IssueData) = createIssueResponse.invoke(data)

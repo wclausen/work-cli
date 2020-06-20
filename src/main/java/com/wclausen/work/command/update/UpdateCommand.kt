@@ -3,7 +3,7 @@ package com.wclausen.work.command.update
 import com.github.ajalt.clikt.core.CliktCommand
 import com.wclausen.work.base.CommandWorkflowRunner
 import com.wclausen.work.git.RealGitService
-import com.wclausen.work.jira.jiraService
+import com.wclausen.work.jira.realJiraService
 import com.wclausen.work.task.RealTaskManager
 import kotlinx.coroutines.channels.ConflatedBroadcastChannel
 import org.eclipse.jgit.api.Git
@@ -21,9 +21,7 @@ class UpdateCommand : CliktCommand(name = "update") {
             CommandWorkflowRunner(
             ConflatedBroadcastChannel(Unit),
             UpdateWorkflow(
-                currentTask,
-                jiraService,
-                RealGitService(Git(repo))
+                currentTask, realJiraService, RealGitService(Git(repo))
             )
         ).run())
     }
