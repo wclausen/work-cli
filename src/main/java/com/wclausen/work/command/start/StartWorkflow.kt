@@ -12,10 +12,10 @@ import com.squareup.workflow.Snapshot
 import com.squareup.workflow.Worker
 import com.squareup.workflow.WorkflowAction
 import com.squareup.workflow.action
+import com.wclausen.work.base.WorkState
 import com.wclausen.work.command.base.Command
 import com.wclausen.work.command.base.CommandOutputWorkflow
 import com.wclausen.work.command.base.Output
-import com.wclausen.work.config.Config
 import com.wclausen.work.git.GitService
 import com.wclausen.work.jira.JiraService
 import com.wclausen.work.jira.api.model.IssueBean
@@ -31,7 +31,7 @@ typealias RenderingContext = RenderContext<StartWorkflow.State, Output<Unit>>
 
 class StartWorkflow @Inject constructor(
     private val jiraService: JiraService, private val gitService: GitService
-) : CommandOutputWorkflow<Config, StartWorkflow.State, Unit>() {
+) : CommandOutputWorkflow<WorkState, StartWorkflow.State, Unit>() {
 
     companion object {
         const val LOADING_TASKS_MESSAGE = "Loading tasks from jira..."
@@ -70,11 +70,11 @@ class StartWorkflow @Inject constructor(
         )
     }
 
-    override fun initialState(props: Config, snapshot: Snapshot?): State {
+    override fun initialState(props: WorkState, snapshot: Snapshot?): State {
         return State.NoTasks()
     }
 
-    override fun render(props: Config, state: State, context: RenderingContext) {
+    override fun render(props: WorkState, state: State, context: RenderingContext) {
         Do exhaustive when (state) {
             is State.NoTasks -> {
                 context.output(loadingTasksMessage())
@@ -269,7 +269,7 @@ private fun RenderingContext.finish() {
     sendToParent(Output.Final(Ok(Unit)))
 }
 
-fun RenderingContext.sendToParent(output: Output.Final<Unit>) {
+fun <StateT> RenderContext<StateT, Output<Unit>>.sendToParent(output: Output.Final<Unit>) {
     runningWorker(Worker.from { output }) {
         action {
             setOutput(it)
@@ -277,7 +277,7 @@ fun RenderingContext.sendToParent(output: Output.Final<Unit>) {
     }
 }
 
-private fun <StateT> RenderContext<StateT, Output<Unit>>.output(
+fun <StateT> RenderContext<StateT, Output<Unit>>.output(
     command: Command, workerKey: String = command.toString()
 ) {
     runningWorker(Worker.from {

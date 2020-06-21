@@ -20,9 +20,7 @@ class FakeJiraService : JiraService {
     }
 
     var getTasksForCurrentUserResponse: (() -> JqlSearchResult) = {
-        if (throws) {
-            throw Exception()
-        }
+        maybeThrow()
         JqlSearchResult(
             listOf(
                 IssueBean(
@@ -35,21 +33,28 @@ class FakeJiraService : JiraService {
         )
     }
 
+    private fun maybeThrow() {
+        if (throws) {
+            throw Exception()
+        }
+    }
+
     override suspend fun createIssue(data: IssueData) = createIssueResponse.invoke(data)
 
     override suspend fun getCurrentUser(): JiraUser {
+        maybeThrow()
         return JiraUser(
-            "user_self",
-            "user_key",
-            "1234567",
-            "some_email@fake.com")
+            "user_self", "user_key", "1234567", "some_email@fake.com"
+        )
     }
 
     override suspend fun getTasksForCurrentUser(fields: Array<String>, jql: String): JqlSearchResult {
+        maybeThrow()
         return getTasksForCurrentUserResponse.invoke()
     }
 
     override suspend fun commentOnIssue(id: String, comment: IssueComment): JiraComment {
+        maybeThrow()
         return JiraComment("some_url", "some_comment_id")
     }
 

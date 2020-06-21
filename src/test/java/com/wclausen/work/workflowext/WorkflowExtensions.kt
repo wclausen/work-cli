@@ -23,6 +23,10 @@ fun Command.Prompt.assertIsPrompt(expectedText: String): Command.Prompt {
     return this
 }
 
+fun Command.Prompt.thenUserInputs(text: String) {
+    nextAction(text)
+}
+
 fun <T> Output<T>.assertIsMessage(expectedText: String) {
     val output = this as Output.InProgress
     val echo = output.command as Command.Echo
@@ -49,4 +53,8 @@ fun <T> Output<T>.multipleCommands(vararg asserts: (Command) -> Unit) {
     for (i in asserts.indices) {
         asserts[i].invoke(multipleCommands.commands[i])
     }
+}
+
+fun <T> Output<T>.assertFinishes() {
+    assertThat(this).isInstanceOf(Output.Final::class.java)
 }

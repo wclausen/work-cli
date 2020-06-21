@@ -48,13 +48,11 @@ class RealConfigReader @Inject constructor(private val configFile: File) : Confi
         bufferedSource.readUtf8()
     }.mapError { it.toConfigError(FAILED_TO_READ_CONFIG_MESSAGE) }
 
-    private fun parseJson(json: String) =
-        com.github.michaelbull.result.runCatching {
-            val moshi = Moshi.Builder()
-                .build()
-            val configJsonAdapter = moshi.adapter(Config::class.java)
-            configJsonAdapter.fromJson(json)!!
-        }.mapError { it.toConfigError(FAILED_TO_PARSE_JSON_MESSAGE) }
+    private fun parseJson(json: String) = runCatching {
+        val moshi = Moshi.Builder().build()
+        val configJsonAdapter = moshi.adapter(Config::class.java)
+        configJsonAdapter.fromJson(json)!!
+    }.mapError { it.toConfigError(FAILED_TO_PARSE_JSON_MESSAGE) }
 
 }
 

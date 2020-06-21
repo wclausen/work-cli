@@ -7,3 +7,6 @@ annotation class StartCommandRunner
 
 @Qualifier
 annotation class InitCommandRunner
+
+@Qualifier
+annotation class CommentCommandRunner

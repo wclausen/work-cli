@@ -14,6 +14,7 @@ import com.wclausen.work.command.init.NoOpCommandWorkflow
 import com.wclausen.work.command.start.StartCommand
 import com.wclausen.work.command.start.StartWorkflow
 import com.wclausen.work.command.update.UpdateCommand
+import com.wclausen.work.commands.comment.CommentWorkflow
 import com.wclausen.work.config.ConfigCreator
 import com.wclausen.work.config.ConfigFileInfo
 import com.wclausen.work.config.ConfigReader
@@ -94,16 +95,33 @@ class AppModule {
     }
 
     @Provides
-    fun workCommand(initCommand: InitCommand, startCommand: StartCommand): WorkCommand =
-        WorkCommand().subcommands(
-            initCommand,
-            startCommand,
-            UpdateCommand(),
-            CommentCommand(),
-            CommitCommand(),
-            DiffCommand(),
-            DoneCommand()
-        )
+    fun commentCommandWorkflow(
+        configReader: ConfigReader,
+        createConfigWorkflow: CreateConfigWorkflow,
+        commentWorkflow: CommentWorkflow
+    ): MainWorkflow<CommentWorkflow> =
+        MainWorkflow(configReader, createConfigWorkflow, commentWorkflow)
+
+
+    @ExperimentalCoroutinesApi
+    @Provides
+    @CommentCommandRunner
+    fun commentWorkflowRunner(commentWorkflow: MainWorkflow<CommentWorkflow>): MainCommandOutputWorkflowRunner {
+        return MainCommandOutputWorkflowRunner(commentWorkflow)
+    }
+
+    @Provides
+    fun workCommand(
+        initCommand: InitCommand, startCommand: StartCommand, commentCommand: CommentCommand
+    ): WorkCommand = WorkCommand().subcommands(
+        initCommand,
+        startCommand,
+        commentCommand,
+        UpdateCommand(),
+        CommitCommand(),
+        DiffCommand(),
+        DoneCommand()
+    )
 
 }
 

@@ -5,7 +5,7 @@ import com.github.michaelbull.result.Result
 import com.squareup.workflow.RenderContext
 import com.squareup.workflow.Snapshot
 import com.squareup.workflow.action
-import com.wclausen.work.base.WorkflowState
+import com.wclausen.work.base.WorkState
 import com.wclausen.work.command.base.Command
 import com.wclausen.work.command.base.StatefulCommandWorkflow
 import com.wclausen.work.git.GitService
@@ -20,13 +20,16 @@ class UpdateWorkflow(
     private val issueId: String,
     private val jiraService: JiraService,
     private val gitService: GitService
-) : StatefulCommandWorkflow<Unit, UpdateWorkflow.State, Result<WorkflowState, UpdateWorkflow.Error>>() {
+) : StatefulCommandWorkflow<Unit, UpdateWorkflow.State, Result<WorkState, UpdateWorkflow.Error>>() {
 
     private var responsesCounter = AtomicInteger(0)
 
     sealed class Error(message: String, cause: Throwable) : Throwable(message, cause) {
-        class JiraFailedToUpdate(cause: Throwable) : Error("Failed when trying to update jira issue with comment", cause)
-        class GitCommitFailed(cause: Throwable) : Error("Failed when committing git files, check your git repo status", cause)
+        class JiraFailedToUpdate(cause: Throwable) :
+            Error("Failed when trying to update jira issue with comment", cause)
+
+        class GitCommitFailed(cause: Throwable) :
+            Error("Failed when committing git files, check your git repo status", cause)
     }
 
     sealed class State {
@@ -43,7 +46,11 @@ class UpdateWorkflow(
         return State.GetJiraComment()
     }
 
-    override fun render(props: Unit, state: State, context: RenderContext<State, Result<WorkflowState, Error>>): Command {
+    override fun render(
+        props: Unit,
+        state: State,
+        context: RenderContext<State, Result<WorkState, Error>>
+    ): Command {
         return when (state) {
             is State.GetJiraComment -> {
                 Command.Prompt("Please enter a jira comment") {
@@ -75,13 +82,13 @@ class UpdateWorkflow(
         }
     }
 
-    private fun commit(message: String, context: RenderContext<State, Result<WorkflowState, Error>>) {
+    private fun commit(message: String, context: RenderContext<State, Result<WorkState, Error>>) {
         CoroutineScope(Dispatchers.IO).launch {
             gitService.commitProgress(message)
             context.actionSink.send(action {
                 responsesCounter.getAndIncrement()
                 nextState = if (responsesCounter.get() == 2) {
-                    setOutput(Ok(WorkflowState.Executing(issueId)))
+                    setOutput(Ok(WorkState.Executing(issueId)))
                     State.FinishedBackgroundWork("Commit finished")
                 } else {
                     State.GitFinishedUpdating()
@@ -90,13 +97,16 @@ class UpdateWorkflow(
         }
     }
 
-    private fun sendCommentToJira(comment: String, context: RenderContext<State, Result<WorkflowState, Error>>) {
+    private fun sendCommentToJira(
+        comment: String,
+        context: RenderContext<State, Result<WorkState, Error>>
+    ) {
         CoroutineScope(Dispatchers.IO).launch {
             jiraService.commentOnIssue(issueId, IssueComment(comment))
             context.actionSink.send(action {
                 responsesCounter.getAndIncrement()
                 nextState = if (responsesCounter.get() == 2) {
-                    setOutput(Ok(WorkflowState.Executing(issueId)))
+                    setOutput(Ok(WorkState.Executing(issueId)))
                     State.FinishedBackgroundWork("Jira finished")
                 } else {
                     State.JiraFinishedUpdating()
