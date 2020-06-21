@@ -1,16 +1,16 @@
 package com.wclausen.work.command.start
 
-import com.google.common.truth.Truth.assertThat
 import com.squareup.workflow.testing.testFromStart
 import com.squareup.workflow.testing.testFromState
+import com.wclausen.work.base.WorkState
 import com.wclausen.work.command.base.Command
-import com.wclausen.work.command.base.Output
-import com.wclausen.work.command.start.StartWorkingWorkflow.Companion.LOADING_TASKS_FAILED_MESSAGE
+import com.wclausen.work.command.start.StartWorkflow.Companion.LOADING_TASKS_FAILED_MESSAGE
 import com.wclausen.work.config.Config
 import com.wclausen.work.config.JiraConfig
 import com.wclausen.work.fake.FakeGitService
 import com.wclausen.work.fake.FakeJiraService
 import com.wclausen.work.workflowext.assertContainsMessage
+import com.wclausen.work.workflowext.assertFinishes
 import com.wclausen.work.workflowext.assertIsMessage
 import com.wclausen.work.workflowext.assertIsPrompt
 import com.wclausen.work.workflowext.first
@@ -25,7 +25,7 @@ class StartWorkflowTest {
     fun `GIVEN no errors WHEN workflow runs THEN completes successfully`() {
         val config = Config(JiraConfig("user@email.com", "fake_jira_token"))
         val fakeJiraService = FakeJiraService()
-        StartWorkflow(fakeJiraService, FakeGitService()).testFromStart(config) {
+        StartWorkflow(fakeJiraService, FakeGitService()).testFromStart(WorkState.Waiting) {
             first().assertIsMessage("Loading jira tasks...")
             then().assertIsMessage(formattedTaskList(fakeJiraService.getTasksForCurrentUserResponse().issues))
             then().assertIsPrompt("Please select a task").nextAction("1")
@@ -43,10 +43,9 @@ class StartWorkflowTest {
 
     @Test
     fun `GIVEN error loading jira tasks WHEN running start command THEN shows error`() {
-        val config = Config(JiraConfig("user@email.com", "fake_jira_token"))
         val fakeJiraService = FakeJiraService()
         fakeJiraService.throws = true
-        StartWorkflow(fakeJiraService, FakeGitService()).testFromStart(config) {
+        StartWorkflow(fakeJiraService, FakeGitService()).testFromStart(WorkState.Waiting) {
             first().assertIsMessage("Loading jira tasks...")
             then().assertIsMessage(LOADING_TASKS_FAILED_MESSAGE)
         }
@@ -55,11 +54,10 @@ class StartWorkflowTest {
     @Test
     fun `GIVEN invalid task selection WHEN selecting tasks THEN prompts for selection again`() =
         runBlockingTest {
-            val config = Config(JiraConfig("user@email.com", "fake_jira_token"))
             val fakeJiraService = FakeJiraService()
             val tasks = fakeJiraService.getTasksForCurrentUser().issues
             StartWorkflow(fakeJiraService, FakeGitService()).testFromState(
-                config, StartWorkflow.State.TaskSelectionNeeded.FirstTime(tasks)
+                WorkState.Waiting, StartWorkflow.State.TaskSelectionNeeded.FirstTime(tasks)
             ) {
                 first().assertIsMessage(formattedTaskList(tasks))
                 then().assertIsPrompt("Please select a task")
@@ -73,14 +71,13 @@ class StartWorkflowTest {
 
     @Test
     fun `GIVEN error WHEN checking out branch THEN show error and return`() = runBlockingTest {
-        val config = Config(JiraConfig("user@email.com", "fake_jira_token"))
         val fakeJiraService = FakeJiraService()
         val tasks = fakeJiraService.getTasksForCurrentUser().issues
         val selectedTask = tasks[0]
         val gitService = FakeGitService()
         gitService.throws = true
         StartWorkflow(fakeJiraService, gitService).testFromState(
-            config, StartWorkflow.State.TaskSelected(
+            WorkState.Waiting, StartWorkflow.State.TaskSelected(
                 selectedTask
             )
         ) {
@@ -96,6 +93,3 @@ class StartWorkflowTest {
     }
 }
 
-private fun <T> Output<T>.assertFinishes() {
-    assertThat(this).isInstanceOf(Output.Final::class.java)
-}

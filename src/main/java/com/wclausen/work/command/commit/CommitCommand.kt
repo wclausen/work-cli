@@ -18,15 +18,14 @@ import java.io.File
  *
  * Under the hood just runs `git commit -am {message}`. Won't add untracked filesnn
  */
-class CommitCommand : CliktCommand(name = "comment") {
+class CommitCommand : CliktCommand(name = "commit") {
 
     @FlowPreview
     @ExperimentalCoroutinesApi
     override fun run() {
-        val workingDir = File(System.getenv("user.dir")) // TODO: make this read from com.wclausen.work.config
-        val repo = RepositoryBuilder()
-            .findGitDir(workingDir)
-            .build()
+        val workingDir =
+            File(System.getenv("user.dir")) // TODO: make this read from com.wclausen.work.config
+        val repo = RepositoryBuilder().findGitDir(workingDir).build()
         val currentTask = RealTaskManager().getCurrentTask()!!
         println(
             CommandWorkflowRunner(

@@ -5,42 +5,44 @@ import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.mapBoth
 import com.squareup.workflow.RenderContext
 import com.squareup.workflow.Snapshot
-import com.squareup.workflow.Worker
-import com.squareup.workflow.WorkflowAction
 import com.squareup.workflow.action
+import com.wclausen.work.base.WorkState
 import com.wclausen.work.command.init.CreateConfigWorkflow
 import com.wclausen.work.config.Config
 import com.wclausen.work.config.ConfigReader
 import com.wclausen.work.kotlinext.Do
 
-class MainWorkflow<CommandT : CommandOutputWorkflow<Config, *, *>>(
+class MainWorkflow<CommandT : CommandOutputWorkflow<WorkState, *, *>>(
     private val configReader: ConfigReader,
     private val createConfigWorkflow: CreateConfigWorkflow,
     private val commandWorkflow: CommandT
 ) : CommandOutputWorkflow<Unit, MainWorkflow.State, ExitCode>() {
     sealed class State {
-        object Uninitialized : State()
+        object Startup : State()
         class RunningCommand(val config: Config) : State()
     }
 
     override fun initialState(props: Unit, snapshot: Snapshot?): State {
         return configReader.getConfig()
-            .mapBoth(
-                success = { config ->
-                    State.RunningCommand(config) }
-                , failure = {
-                    State.Uninitialized })
+            .mapBoth(success = { config ->
+                State.RunningCommand(config)
+            }, failure = {
+                State.Startup
+            })
     }
 
     override fun render(props: Unit, state: State, context: RenderContext<State, Output<ExitCode>>) {
         Do exhaustive when (state) {
-            State.Uninitialized -> context.renderChild(createConfigWorkflow, Unit) { output ->
+            State.Startup -> context.renderChild(createConfigWorkflow, Unit) { output ->
                 when (output) {
                     is Output.InProgress -> continueInitialization(output)
                     is Output.Final -> runCommand(output)
                 }
             }
-            is State.RunningCommand -> context.renderChild(commandWorkflow, state.config) { output ->
+            is State.RunningCommand -> context.renderChild(
+                commandWorkflow,
+                WorkState.Waiting
+            ) { output ->
                 when (output) {
                     is Output.InProgress -> continueCommand(output)
                     is Output.Final -> finish(output)
