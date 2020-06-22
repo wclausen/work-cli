@@ -10,3 +10,6 @@ annotation class InitCommandRunner
 
 @Qualifier
 annotation class CommentCommandRunner
+
+@Qualifier
+annotation class CommitCommandRunner

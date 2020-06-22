@@ -19,3 +19,5 @@ sealed class WorkState() {
     class Executing(val taskId: String) : WorkState()
 
 }
+
+fun WorkState.getTaskId(): String = (this as WorkState.Executing).taskId

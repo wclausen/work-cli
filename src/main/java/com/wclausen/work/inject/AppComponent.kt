@@ -6,6 +6,7 @@ import com.wclausen.work.command.base.MainWorkflow
 import com.wclausen.work.command.base.WorkCommand
 import com.wclausen.work.command.comment.CommentCommand
 import com.wclausen.work.command.commit.CommitCommand
+import com.wclausen.work.command.commit.CommitWorkflow
 import com.wclausen.work.command.diff.DiffCommand
 import com.wclausen.work.command.done.DoneCommand
 import com.wclausen.work.command.init.CreateConfigWorkflow
@@ -54,7 +55,7 @@ class AppModule {
 
     @Provides
     fun gitClient(): Git {
-        val workingDir = File("/Users/wclausen/code/git_messaround")
+        val workingDir = File(System.getProperty("user.dir"))
         val repo = RepositoryBuilder().findGitDir(workingDir).build()
         return Git(repo)
     }
@@ -111,14 +112,33 @@ class AppModule {
     }
 
     @Provides
+    fun commitCommandWorkflow(
+        configReader: ConfigReader,
+        createConfigWorkflow: CreateConfigWorkflow,
+        commitWorkflow: CommitWorkflow
+    ): MainWorkflow<CommitWorkflow> =
+        MainWorkflow(configReader, createConfigWorkflow, commitWorkflow)
+
+
+    @ExperimentalCoroutinesApi
+    @Provides
+    @CommitCommandRunner
+    fun commitWorkflowRunner(commentWorkflow: MainWorkflow<CommentWorkflow>): MainCommandOutputWorkflowRunner {
+        return MainCommandOutputWorkflowRunner(commentWorkflow)
+    }
+
+    @Provides
     fun workCommand(
-        initCommand: InitCommand, startCommand: StartCommand, commentCommand: CommentCommand
+        initCommand: InitCommand,
+        startCommand: StartCommand,
+        commentCommand: CommentCommand,
+        commitCommand: CommitCommand
     ): WorkCommand = WorkCommand().subcommands(
         initCommand,
         startCommand,
         commentCommand,
+        commitCommand,
         UpdateCommand(),
-        CommitCommand(),
         DiffCommand(),
         DoneCommand()
     )

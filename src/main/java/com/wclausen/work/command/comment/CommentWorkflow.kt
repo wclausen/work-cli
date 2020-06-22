@@ -12,6 +12,7 @@ import com.squareup.workflow.Worker
 import com.squareup.workflow.WorkflowAction
 import com.squareup.workflow.action
 import com.wclausen.work.base.WorkState
+import com.wclausen.work.base.getTaskId
 import com.wclausen.work.command.base.Command
 import com.wclausen.work.command.base.CommandOutputWorkflow
 import com.wclausen.work.command.base.Output
@@ -46,8 +47,7 @@ class CommentWorkflow @Inject constructor(
 
     sealed class Error(message: String, cause: Throwable) : Throwable(message, cause) {
         class JiraCommentFailed(cause: Throwable) : Error(FAILED_TO_UPDATE_JIRA, cause)
-
-        class InvalidInitialState() : Error(NO_TASK_ERROR_MESSAGE, IllegalStateException())
+        class InvalidInitialState : Error(NO_TASK_ERROR_MESSAGE, IllegalStateException())
     }
 
     override fun initialState(props: WorkState, snapshot: Snapshot?): State {
@@ -116,12 +116,10 @@ private fun <V, E : CommentWorkflow.Error> Result<V, E>.goesToNextState(
     })
 }
 
-fun <StateT> RenderContext<StateT, Output<Unit>>.finish(result: CommentWorkflow.State.Finished) {
+private fun <StateT> RenderContext<StateT, Output<Unit>>.finish(result: CommentWorkflow.State.Finished) {
     val output = when (result) {
         is CommentWorkflow.State.Finished.Success -> Ok(Unit)
         is CommentWorkflow.State.Finished.Error -> Err(result.error)
     }
     sendToParent(Output.Final(output))
 }
-
-private fun WorkState.getTaskId(): String = (this as WorkState.Executing).taskId

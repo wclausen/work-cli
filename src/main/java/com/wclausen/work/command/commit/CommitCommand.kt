@@ -1,15 +1,14 @@
 package com.wclausen.work.command.commit
 
 import com.github.ajalt.clikt.core.CliktCommand
-import com.wclausen.work.base.CommandWorkflowRunner
-import com.wclausen.work.git.RealGitService
+import com.wclausen.work.base.MainCommandOutputWorkflowRunner
+import com.wclausen.work.inject.CommitCommandRunner
 import com.wclausen.work.task.RealTaskManager
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.channels.ConflatedBroadcastChannel
-import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.lib.RepositoryBuilder
 import java.io.File
+import javax.inject.Inject
 
 /**
  * Commits modified files to Git repo.
@@ -18,19 +17,21 @@ import java.io.File
  *
  * Under the hood just runs `git commit -am {message}`. Won't add untracked filesnn
  */
-class CommitCommand : CliktCommand(name = "commit") {
+class CommitCommand @Inject constructor(@CommitCommandRunner private val commitWorkflowRunner: MainCommandOutputWorkflowRunner) :
+    CliktCommand(name = "commit") {
 
     @FlowPreview
     @ExperimentalCoroutinesApi
     override fun run() {
+        commitWorkflowRunner.run()
         val workingDir =
             File(System.getenv("user.dir")) // TODO: make this read from com.wclausen.work.config
         val repo = RepositoryBuilder().findGitDir(workingDir).build()
         val currentTask = RealTaskManager().getCurrentTask()!!
-        println(
-            CommandWorkflowRunner(
-            ConflatedBroadcastChannel(Unit),
-            CommitWorkflow(currentTask, RealGitService(Git(repo)))
-        ).run())
+//        println(
+//            CommandWorkflowRunner(
+//            ConflatedBroadcastChannel(Unit),
+//            CommitWorkflow(currentTask, RealGitService(Git(repo)))
+//        ).run())
     }
 }
