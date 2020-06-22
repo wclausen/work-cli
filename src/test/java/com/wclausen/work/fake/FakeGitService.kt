@@ -3,6 +3,7 @@ package com.wclausen.work.fake
 import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
+import com.github.michaelbull.result.mapError
 import com.wclausen.work.git.GitService
 import org.eclipse.jgit.lib.AnyObjectId
 import org.eclipse.jgit.lib.ObjectId
@@ -18,8 +19,16 @@ class FakeGitService : GitService {
         return if (!throws) Ok(FakeRef()) else Err(GitService.GitError.CheckoutFailedError(Exception()))
     }
 
-    override fun commitProgress(message: String): RevCommit {
-        return FakeRevCommit()
+    override fun commitProgress(message: String): Result<RevCommit, GitService.GitError> =
+        com.github.michaelbull.result.runCatching {
+            maybeThrow()
+            FakeRevCommit()
+        }.mapError { GitService.GitError.CommitFailedError(it) }
+
+    private fun maybeThrow() {
+        if (throws) {
+            throw Exception()
+        }
     }
 
 }
