@@ -16,7 +16,7 @@ sealed class WorkState() {
 
     object Waiting : WorkState()
 
-    class Executing(val taskId: String) : WorkState()
+    data class Executing(val taskId: String) : WorkState()
 
 }
 

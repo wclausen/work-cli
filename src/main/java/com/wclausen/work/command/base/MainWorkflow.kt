@@ -7,28 +7,32 @@ import com.squareup.workflow.RenderContext
 import com.squareup.workflow.Snapshot
 import com.squareup.workflow.action
 import com.wclausen.work.base.WorkState
+import com.wclausen.work.base.WorkStateManager
 import com.wclausen.work.command.init.CreateConfigWorkflow
-import com.wclausen.work.config.Config
-import com.wclausen.work.config.ConfigReader
 import com.wclausen.work.kotlinext.Do
 
 class MainWorkflow<CommandT : CommandOutputWorkflow<WorkState, *, *>>(
-    private val configReader: ConfigReader,
+    private val workStateManager: WorkStateManager,
     private val createConfigWorkflow: CreateConfigWorkflow,
     private val commandWorkflow: CommandT
 ) : CommandOutputWorkflow<Unit, MainWorkflow.State, ExitCode>() {
     sealed class State {
         object Startup : State()
-        class RunningCommand(val config: Config) : State()
+        class RunningCommand(val workState: WorkState) : State()
     }
 
     override fun initialState(props: Unit, snapshot: Snapshot?): State {
-        return configReader.getConfig()
-            .mapBoth(success = { config ->
-                State.RunningCommand(config)
-            }, failure = {
-                State.Startup
-            })
+        return workStateManager.getWorkflowState().mapBoth(success = { workState ->
+            State.RunningCommand(workState)
+        }, failure = {
+            return when (it) {
+                is WorkStateManager.Error.ConfigError, is WorkStateManager.Error.NoLogFileError -> State.Startup
+                is WorkStateManager.Error.WorkUpdateWriteFailed -> throw IllegalStateException("Received unexpected error when executing command: $it")
+                is WorkStateManager.Error.EmptyLogFileError, is WorkStateManager.Error.MalformedLogError -> State.RunningCommand(
+                    WorkState.Waiting
+                )
+            }
+        })
     }
 
     override fun render(props: Unit, state: State, context: RenderContext<State, Output<ExitCode>>) {
@@ -40,8 +44,7 @@ class MainWorkflow<CommandT : CommandOutputWorkflow<WorkState, *, *>>(
                 }
             }
             is State.RunningCommand -> context.renderChild(
-                commandWorkflow,
-                WorkState.Waiting
+                commandWorkflow, state.workState
             ) { output ->
                 when (output) {
                     is Output.InProgress -> continueCommand(output)
@@ -52,26 +55,19 @@ class MainWorkflow<CommandT : CommandOutputWorkflow<WorkState, *, *>>(
     }
 
     private fun finish(output: Output.Final<*>) = action {
-        output.result.mapBoth(
-            {
-                setOutput(Output.Final(Ok(ExitCode(0))))
-            },
-            { error ->
-                setOutput(Output.Final(Err(error)))
-            }
-        )
+        output.result.mapBoth({
+            setOutput(Output.Final(Ok(ExitCode(0))))
+        }, { error ->
+            setOutput(Output.Final(Err(error)))
+        })
     }
 
-    private fun runCommand(output: Output.Final<Config>) = action {
-        output.result.mapBoth(
-            { config ->
-                nextState =
-                    State.RunningCommand(config)
-            },
-            { error ->
-                setOutput(Output.Final(Err(error)))
-            }
-        )
+    private fun runCommand(output: Output.Final<WorkState>) = action {
+        output.result.mapBoth({ config ->
+            nextState = State.RunningCommand(config)
+        }, { error ->
+            setOutput(Output.Final(Err(error)))
+        })
     }
 
     private fun continueCommand(output: Output.InProgress) = justPassOutputAlong(output)

@@ -123,8 +123,8 @@ class AppModule {
     @ExperimentalCoroutinesApi
     @Provides
     @CommitCommandRunner
-    fun commitWorkflowRunner(commentWorkflow: MainWorkflow<CommentWorkflow>): MainCommandOutputWorkflowRunner {
-        return MainCommandOutputWorkflowRunner(commentWorkflow)
+    fun commitWorkflowRunner(commitWorkflow: MainWorkflow<CommitWorkflow>): MainCommandOutputWorkflowRunner {
+        return MainCommandOutputWorkflowRunner(commitWorkflow)
     }
 
     @Provides

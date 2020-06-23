@@ -24,7 +24,7 @@ class CommitWorkflow @Inject constructor(
 
     companion object {
         const val SUCCESS_MESSAGE = "Successfully committed to git"
-        const val NO_TASK_ERROR_MESSAGE = "You must select a task before commenting"
+        const val NO_TASK_ERROR_MESSAGE = "You must select a task before committing"
         const val COMMIT_IN_PROGRESS_MESSAGE = "Committing to git"
         const val FAILED_TO_COMMIT_MESSAGE = "Failed to commit to git"
 
