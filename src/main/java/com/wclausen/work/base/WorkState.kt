@@ -16,8 +16,10 @@ sealed class WorkState() {
 
     object Waiting : WorkState()
 
-    data class Executing(val taskId: String) : WorkState()
+    data class Executing(val taskId: String, val goal: String) : WorkState()
 
 }
 
-fun WorkState.getTaskId(): String = (this as WorkState.Executing).taskId
+fun WorkState.requireExecuting(): WorkState.Executing {
+    return this as WorkState.Executing
+}

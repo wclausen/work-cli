@@ -7,36 +7,43 @@ import com.github.michaelbull.result.mapError
 import com.github.michaelbull.result.runCatching
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.adapters.PolymorphicJsonAdapterFactory
-import com.wclausen.work.config.ConfigReader
+import com.wclausen.work.config.ConfigManager
+import com.wclausen.work.inject.WorkLogFile
 import okio.BufferedSource
 import okio.buffer
 import okio.sink
 import okio.source
-import java.io.File
+import java.nio.file.Path
+import java.nio.file.StandardOpenOption.APPEND
 
 interface WorkStateManager {
 
-    fun getWorkflowState(): Result<WorkState, Error>
+    fun getWorkflowState(): Result<WorkState, Error.ReadStateError>
 
     fun writeUpdateToLog(update: WorkUpdate): Result<Unit, Error>
 
     sealed class Error() {
 
-        class ConfigError : Error()
+        sealed class ReadStateError() : Error() {
 
-        class NoLogFileError : Error()
+            class ConfigError : ReadStateError()
 
-        class EmptyLogFileError : Error()
+            class NoLogFileError : ReadStateError()
 
-        data class MalformedLogError(val cause: Throwable) : Error()
+            class EmptyLogFileError : ReadStateError()
+
+            data class MalformedLogError(val cause: Throwable) : ReadStateError()
+
+        }
 
         class WorkUpdateWriteFailed : Error()
 
     }
 }
 
-class RealWorkStateManager(private val logFile: File, private val configReader: ConfigReader) :
-    WorkStateManager {
+class RealWorkStateManager(
+    @WorkLogFile private val logFile: Path, private val configManager: ConfigManager
+) : WorkStateManager {
 
     companion object {
         val moshi = Moshi.Builder().add(
@@ -51,45 +58,52 @@ class RealWorkStateManager(private val logFile: File, private val configReader: 
         ).build()
     }
 
-    override fun getWorkflowState(): Result<WorkState, WorkStateManager.Error> {
-        return configReader.getConfig().mapError { WorkStateManager.Error.ConfigError() }
-            .andThen { openLog() }.andThen(::readLastLine).andThen(::parseLastWorkUpdate)
-            .map { mapToWorkflowState(it) }
+    override fun getWorkflowState(): Result<WorkState, WorkStateManager.Error.ReadStateError> {
+        return configManager.getConfig()
+            .mapError { WorkStateManager.Error.ReadStateError.ConfigError() }.andThen { openLog() }
+            .andThen(::readLastLine).andThen(::parseLastWorkUpdate).map { mapToWorkflowState(it) }
     }
 
     private fun mapToWorkflowState(workUpdate: WorkUpdate): WorkState = when (workUpdate) {
-        is WorkUpdate.Start -> WorkState.Executing(taskId = workUpdate.taskId)
-        is WorkUpdate.JiraComment -> WorkState.Executing(taskId = workUpdate.taskId)
-        is WorkUpdate.GitCommit -> WorkState.Executing(workUpdate.taskId)
+        is WorkUpdate.Start -> WorkState.Executing(
+            taskId = workUpdate.taskId,
+            goal = workUpdate.goal
+        )
+        is WorkUpdate.JiraComment -> WorkState.Executing(
+            taskId = workUpdate.taskId,
+            goal = workUpdate.goal
+        )
+        is WorkUpdate.GitCommit -> WorkState.Executing(workUpdate.taskId, workUpdate.goal)
         is WorkUpdate.FinishedTask -> WorkState.Waiting
     }
 
-    override fun writeUpdateToLog(update: WorkUpdate): Result<Unit, WorkStateManager.Error> {
+    override fun writeUpdateToLog(update: WorkUpdate): Result<Unit, WorkStateManager.Error.WorkUpdateWriteFailed> {
         val jsonParser = moshi.adapter(WorkUpdate::class.java)
         return runCatching {
-            logFile.sink(append = true).buffer().writeUtf8(jsonParser.toJson(update) + "\n").flush()
+            logFile.sink(APPEND).buffer().writeUtf8(jsonParser.toJson(update) + "\n").flush()
             Unit
         }.mapError { WorkStateManager.Error.WorkUpdateWriteFailed() }
     }
 
-    private fun parseLastWorkUpdate(stateJson: String): Result<WorkUpdate, WorkStateManager.Error> =
+    private fun parseLastWorkUpdate(stateJson: String): Result<WorkUpdate, WorkStateManager.Error.ReadStateError> =
         runCatching {
             val configJsonAdapter = moshi.adapter(WorkUpdate::class.java)
             configJsonAdapter.fromJson(stateJson)!!
-        }.mapError { WorkStateManager.Error.MalformedLogError(it) }
+        }.mapError { WorkStateManager.Error.ReadStateError.MalformedLogError(it) }
 
-    private fun readLastLine(source: BufferedSource): Result<String, WorkStateManager.Error> =
+    private fun readLastLine(source: BufferedSource): Result<String, WorkStateManager.Error.ReadStateError> =
         runCatching {
             var line: String? = null
             while (!source.exhausted()) {
                 line = source.readUtf8Line()
             }
             line ?: throw Exception("Empty log")
-        }.mapError { WorkStateManager.Error.EmptyLogFileError() }
+        }.mapError { WorkStateManager.Error.ReadStateError.EmptyLogFileError() }
 
-    private fun openLog(): Result<BufferedSource, WorkStateManager.Error> = runCatching {
-        logFile.source().buffer()
-    }.mapError { WorkStateManager.Error.NoLogFileError() }
+    private fun openLog(): Result<BufferedSource, WorkStateManager.Error.ReadStateError> =
+        runCatching {
+            logFile.source().buffer()
+        }.mapError { WorkStateManager.Error.ReadStateError.NoLogFileError() }
 
 
 }

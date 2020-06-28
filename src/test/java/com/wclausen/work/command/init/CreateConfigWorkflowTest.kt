@@ -8,8 +8,10 @@ import com.squareup.workflow.testing.testFromStart
 import com.wclausen.work.command.base.Command
 import com.wclausen.work.command.base.Output
 import com.wclausen.work.config.Config
-import com.wclausen.work.config.ConfigCreator
-import com.wclausen.work.fake.FakeConfigCreator
+import com.wclausen.work.config.ConfigManager
+import com.wclausen.work.config.RealConfigManager
+import com.wclausen.work.fake.FakeConfigManager
+import com.wclausen.work.fake.TestResources
 import com.wclausen.work.workflowext.assertIsPrompt
 import com.wclausen.work.workflowext.first
 import com.wclausen.work.workflowext.then
@@ -28,17 +30,12 @@ class CreateConfigWorkflowTest {
         // Test of entire flow, mostly to show the kinds of tests possible with workflow :)
         val expected_username = "some_username"
         val expected_token = "some_token"
-        val tempConfigPath = temporaryFolder.newFile().toPath()
-        val createConfigWorkflow = CreateConfigWorkflow(FakeConfigCreator(tempConfigPath))
+        val tempConfigPath = TestResources.fakeConfigPath
+        val createConfigWorkflow = CreateConfigWorkflow(RealConfigManager(tempConfigPath))
         createConfigWorkflow.testFromStart {
-            first()
-                .asksForUsername()
-                .whenUsernameProvided(expected_username)
-            then()
-                .asksForToken()
-                .whenTokenProvided(expected_token)
-            then()
-                .emitsSavingFileMessage()
+            first().asksForUsername().whenUsernameProvided(expected_username)
+            then().asksForToken().whenTokenProvided(expected_token)
+            then().emitsSavingFileMessage()
             then()
                 .emitsConfig()
                 .withDetails(
@@ -53,18 +50,16 @@ class CreateConfigWorkflowTest {
         val expected_username = "some_username"
         val expected_token = "some_token"
         val tempConfigPath = temporaryFolder.newFile().toPath()
-        val throwingConfigCreator = FakeConfigCreator(tempConfigPath)
-        throwingConfigCreator.creationResult = Err(ConfigCreator.Error.FailedToCreateConfig(tempConfigPath, IOException()))
+        val throwingConfigCreator = FakeConfigManager(tempConfigPath)
+        throwingConfigCreator.getConfigResult =
+            Err(ConfigManager.Error.ConfigLoadingError.NoConfigFileError("No config present"))
+        throwingConfigCreator.createConfigResult =
+            Err(ConfigManager.Error.FailedToCreateConfig(tempConfigPath, IOException()))
         val createConfigWorkflow = CreateConfigWorkflow(throwingConfigCreator)
         createConfigWorkflow.testFromStart {
-            first()
-                .asksForUsername()
-                .whenUsernameProvided(expected_username)
-            then()
-                .asksForToken()
-                .whenTokenProvided(expected_token)
-            then()
-                .emitsSavingFileMessage()
+            first().asksForUsername().whenUsernameProvided(expected_username)
+            then().asksForToken().whenTokenProvided(expected_token)
+            then().emitsSavingFileMessage()
             then()
                 .emitsError()
                 .withMessage("Failed to create config file")
@@ -77,18 +72,16 @@ class CreateConfigWorkflowTest {
         val expected_username = "some_username"
         val expected_token = "some_token"
         val tempConfigPath = temporaryFolder.newFile().toPath()
-        val throwingConfigCreator = FakeConfigCreator(tempConfigPath)
-        throwingConfigCreator.creationResult = Err(ConfigCreator.Error.FailedToWriteToConfigFile(tempConfigPath, IOException()))
+        val throwingConfigCreator = FakeConfigManager(tempConfigPath)
+        throwingConfigCreator.getConfigResult =
+            Err(ConfigManager.Error.ConfigLoadingError.NoConfigFileError("No config present"))
+        throwingConfigCreator.createConfigResult =
+            Err(ConfigManager.Error.FailedToWriteToConfigFile(tempConfigPath, IOException()))
         val createConfigWorkflow = CreateConfigWorkflow(throwingConfigCreator)
         createConfigWorkflow.testFromStart {
-            first()
-                .asksForUsername()
-                .whenUsernameProvided(expected_username)
-            then()
-                .asksForToken()
-                .whenTokenProvided(expected_token)
-            then()
-                .emitsSavingFileMessage()
+            first().asksForUsername().whenUsernameProvided(expected_username)
+            then().asksForToken().whenTokenProvided(expected_token)
+            then().emitsSavingFileMessage()
             then()
                 .emitsError()
                 .withMessage("Failed to write config data")

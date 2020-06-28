@@ -11,3 +11,13 @@ object ConfigFileInfo {
 
     val configFile = configFilePath.toFile()
 }
+
+object WorkLogFileInfo {
+    val workLogDirectoryName = System.getProperty("user.home") + "/.workflow/"
+    val workLogFileName = "work_log"
+
+    val workLogDirectoryPath = Paths.get(workLogDirectoryName)
+    val workLogFilePath = Paths.get(workLogDirectoryName + workLogFileName)
+
+    val workLogFile = workLogFilePath.toFile()
+}

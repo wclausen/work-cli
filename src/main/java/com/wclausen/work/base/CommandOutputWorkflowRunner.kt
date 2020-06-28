@@ -1,7 +1,6 @@
 package com.wclausen.work.base
 
 import com.github.ajalt.clikt.output.TermUi
-import com.github.michaelbull.result.Result
 import com.squareup.workflow.launchWorkflowIn
 import com.wclausen.work.command.base.Command
 import com.wclausen.work.command.base.CommandOutputWorkflow
@@ -20,7 +19,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.produceIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import javax.inject.Inject
 
 /**
  * Class that runs Command workflows that issue commands through the Workflow's OutputT.
@@ -58,6 +56,7 @@ abstract class CommandOutputWorkflowRunner<in PropsT, StateT, OutputT> construct
                     Do exhaustive when (output) {
                         is Output.InProgress -> handleCommand(output.command)
                         is Output.Final<*> -> Unit // do nothing, handled later
+                        is Output.Log -> Unit // Do nothing, handled by MainWorkflow
                     }
                 }
             }

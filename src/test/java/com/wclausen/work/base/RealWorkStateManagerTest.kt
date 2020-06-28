@@ -1,16 +1,18 @@
 package com.wclausen.work.base
 
+import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.get
 import com.github.michaelbull.result.getError
 import com.google.common.truth.Truth.assertThat
-import com.wclausen.work.fake.FakeConfigReader
+import com.wclausen.work.config.ConfigManager
+import com.wclausen.work.fake.FakeConfigManager
+import com.wclausen.work.fake.TestResources
 import org.junit.Test
-import java.io.File
 
 class RealWorkStateManagerTest {
 
     val workStateManager = RealWorkStateManager(
-        File(javaClass.getResource("/test_work_log").file), FakeConfigReader()
+        TestResources.fakeLogPath, FakeConfigManager(TestResources.fakeConfigPath)
     )
 
     @Test
@@ -51,10 +53,11 @@ class RealWorkStateManagerTest {
 
     @Test
     fun `GIVEN bad config WHEN reading state THEN state is uninitialized`() {
-        val configReader = FakeConfigReader()
-        configReader.returnsError = true
+        val configManager = FakeConfigManager(TestResources.fakeConfigPath)
+        configManager.getConfigResult =
+            Err(ConfigManager.Error.ConfigLoadingError.ParsingFileError("Bad config"))
         val workStateManager = RealWorkStateManager(
-            File(javaClass.getResource("/test_work_log").file), configReader
+            TestResources.fakeLogPath, configManager
         )
         workStateManager.writeUpdateToLog(
             WorkUpdate.FinishedTask(
@@ -63,7 +66,7 @@ class RealWorkStateManagerTest {
         )
         assertThat(
             workStateManager.getWorkflowState().getError()
-        ).isInstanceOf(WorkStateManager.Error.ConfigError::class.java)
+        ).isInstanceOf(WorkStateManager.Error.ReadStateError.ConfigError::class.java)
     }
 
     @Test

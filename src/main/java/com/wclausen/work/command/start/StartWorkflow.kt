@@ -13,6 +13,7 @@ import com.squareup.workflow.Worker
 import com.squareup.workflow.WorkflowAction
 import com.squareup.workflow.action
 import com.wclausen.work.base.WorkState
+import com.wclausen.work.base.WorkUpdate
 import com.wclausen.work.command.base.Command
 import com.wclausen.work.command.base.CommandOutputWorkflow
 import com.wclausen.work.command.base.Output
@@ -23,6 +24,7 @@ import com.wclausen.work.kotlinext.Do
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import org.eclipse.jgit.lib.Ref
 import java.util.UUID
 import javax.inject.Inject
@@ -52,7 +54,7 @@ class StartWorkflow @Inject constructor(
         }
 
         class TaskSelected(val selectedTask: IssueBean) : State()
-        class Success(val branchRef: Ref) : State()
+        class Success(val selectedTask: IssueBean, val goal: String, val branchRef: Ref) : State()
         data class Error(val error: StartWorkflow.Error) : State()
     }
 
@@ -96,11 +98,22 @@ class StartWorkflow @Inject constructor(
                     it.mapError {
                         Error.CheckoutBranchError(GitService.GitError.CheckoutFailedError(it))
                     }.goesToNextState({
-                        State.Success(branchRef = it.first)
+                        State.Success(
+                            selectedTask = state.selectedTask,
+                            goal = it.second,
+                            branchRef = it.first
+                        )
                     })
                 }
             }
             is State.Success -> {
+                context.log(
+                    WorkUpdate.Start(
+                        state.selectedTask.key,
+                        state.selectedTask.fields.summary,
+                        state.goal
+                    )
+                )
                 context.output(savedGoalMessage())
                 context.output(checkedOutBranchMessage(state.branchRef))
                 context.finish()
@@ -112,13 +125,24 @@ class StartWorkflow @Inject constructor(
         }
     }
 
+    private fun checkoutBranch(context: RenderingContext, branchName: String) {
+        context.runningWorker(Worker.from {
+            gitService.checkout(branchName)
+        }, "checkout_branch") { result ->
+            action {
+                result.mapBoth({ setOutput(Output.InProgress(Command.Echo("Checked out branch: $it"))) },
+                    { setOutput(Output.InProgress(Command.Echo("Checkout failed: $it"))) })
+            }
+        }
+    }
+
     private fun savedGoalMessage() = Command.Echo("Saved goal")
 
     private fun checkedOutBranchMessage(branchRef: Ref) =
         Command.Echo("Checked out branch: ${branchRef.name}")
 
     //region [State.NoTasks] functions
-    private fun loadingTasksMessage() = Command.Echo("Loading jira tasks...")
+    private fun loadingTasksMessage() = Command.Echo(LOADING_TASKS_MESSAGE)
 
     private suspend fun getTasksFromJira() = runCatching {
         // TODO: this won't return anything until I read current user email from config
@@ -186,11 +210,14 @@ class StartWorkflow @Inject constructor(
                 saveGoal(it)
                 goal = it
             })))
+            while (goal == "") {
+                delay(100)
+            }
             val result = gitResult.await().map { it to goal }
             emit(Output.Final(result))
         }) {
             when (it) {
-                is Output.InProgress -> sendToParent(it)
+                is Output.InProgress, is Output.Log -> sendToParent(it)
                 is Output.Final -> nextAction.invoke(it.result)
             }
         }
@@ -227,19 +254,10 @@ class StartWorkflow @Inject constructor(
         setOutput(Output.InProgress(Command.Echo("Failed with error")))
     }
 
-//    private fun RenderingContext.checkoutGitBranchInBackground(selectedTask: IssueBean) {
-//        runningWorker(Worker.from {
-//            gitService.checkout(selectedTask.key)
-//        }) {
-//            action {
-//                nextState = State.BranchCheckedOut(nextState, selectedTask)
-//            }
-//        }
-//    }
-
     private fun <T> sendToParent(output: Output<T>) = action {
         Do exhaustive when (output) {
             is Output.InProgress -> setOutput(output)
+            is Output.Log -> setOutput(output)
             is Output.Final -> {
                 output.result.mapBoth({
                     setOutput(Output.Final(Ok(Unit)))
@@ -277,7 +295,17 @@ fun <StateT> RenderContext<StateT, Output<Unit>>.sendToParent(output: Output.Fin
     }
 }
 
-fun <StateT> RenderContext<StateT, Output<Unit>>.output(
+fun <StateT, OutputT> RenderContext<StateT, Output<OutputT>>.log(workUpdate: WorkUpdate) {
+    runningWorker(Worker.from {
+        Output.Log(workUpdate)
+    }) {
+        action {
+            setOutput(it)
+        }
+    }
+}
+
+fun <StateT, OutputT> RenderContext<StateT, Output<OutputT>>.output(
     command: Command, workerKey: String = command.toString()
 ) {
     runningWorker(Worker.from {

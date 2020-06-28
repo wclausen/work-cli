@@ -9,7 +9,7 @@ import com.squareup.workflow.Snapshot
 import com.squareup.workflow.Worker
 import com.squareup.workflow.action
 import com.wclausen.work.base.WorkState
-import com.wclausen.work.base.getTaskId
+import com.wclausen.work.base.requireExecuting
 import com.wclausen.work.command.base.Command
 import com.wclausen.work.command.base.CommandOutputWorkflow
 import com.wclausen.work.command.base.Output
@@ -57,9 +57,10 @@ class CommitWorkflow @Inject constructor(
         state: State,
         context: RenderContext<State, Output<Unit>>
     ) {
+        val executingProps = props.requireExecuting()
         when (state) {
             is State.PromptForCommitMessage -> {
-                context.output(Command.Prompt(getPromptMessage(props.getTaskId())) { message ->
+                context.output(Command.Prompt(getPromptMessage(executingProps.taskId)) { message ->
                     context.actionSink.send(action {
                         nextState = State.ReceivedCommitMessage(message)
                     })

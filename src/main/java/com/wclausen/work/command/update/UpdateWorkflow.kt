@@ -88,7 +88,7 @@ class UpdateWorkflow(
             context.actionSink.send(action {
                 responsesCounter.getAndIncrement()
                 nextState = if (responsesCounter.get() == 2) {
-                    setOutput(Ok(WorkState.Executing(issueId)))
+                    setOutput(Ok(WorkState.Executing(issueId, "GOAL")))
                     State.FinishedBackgroundWork("Commit finished")
                 } else {
                     State.GitFinishedUpdating()
@@ -106,7 +106,14 @@ class UpdateWorkflow(
             context.actionSink.send(action {
                 responsesCounter.getAndIncrement()
                 nextState = if (responsesCounter.get() == 2) {
-                    setOutput(Ok(WorkState.Executing(issueId)))
+                    setOutput(
+                        Ok(
+                            WorkState.Executing(
+                                issueId,
+                                "GOAL"
+                            )
+                        )
+                    ) // TODO: make update goal take WorkState as props
                     State.FinishedBackgroundWork("Jira finished")
                 } else {
                     State.JiraFinishedUpdating()
