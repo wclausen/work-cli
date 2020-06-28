@@ -12,10 +12,12 @@ import com.squareup.workflow.Worker
 import com.squareup.workflow.WorkflowAction
 import com.squareup.workflow.action
 import com.wclausen.work.base.WorkState
-import com.wclausen.work.base.getTaskId
+import com.wclausen.work.base.WorkUpdate
+import com.wclausen.work.base.requireExecuting
 import com.wclausen.work.command.base.Command
 import com.wclausen.work.command.base.CommandOutputWorkflow
 import com.wclausen.work.command.base.Output
+import com.wclausen.work.command.start.log
 import com.wclausen.work.command.start.output
 import com.wclausen.work.command.start.sendToParent
 import com.wclausen.work.jira.JiraService
@@ -62,6 +64,7 @@ class CommentWorkflow @Inject constructor(
     override fun render(
         props: WorkState, state: State, context: RenderContext<State, Output<Unit>>
     ) {
+        val executingProps = props.requireExecuting()
         Do exhaustive when (state) {
             is State.PromptForComment -> context.output(Command.Prompt(COMMENT_PROMPT) { message ->
                 context.actionSink.send(action {
@@ -70,13 +73,20 @@ class CommentWorkflow @Inject constructor(
             })
             is State.ReceivedComment -> {
                 context.output(Command.Echo(SENDING_COMMENT_TO_JIRA_MESSAGE))
-                context.sendCommentToJira(props.getTaskId(), state.comment, jiraService) {
+                context.sendCommentToJira(executingProps.taskId, state.comment, jiraService) {
                     it.goesToNextState({
                         State.Finished.Success()
                     })
                 }
             }
             is State.Finished -> {
+                context.log(
+                    WorkUpdate.JiraComment(
+                        executingProps.taskId,
+                        state.message,
+                        executingProps.goal
+                    )
+                )
                 context.output(Command.Echo(state.message))
                 context.finish(state)
             }

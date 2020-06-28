@@ -25,7 +25,7 @@ class CommitCommand @Inject constructor(@CommitCommandRunner private val commitW
     override fun run() {
         commitWorkflowRunner.run()
         val workingDir =
-            File(System.getenv("user.dir")) // TODO: make this read from com.wclausen.work.config
+            File(System.getProperty("user.dir")) // TODO: make this read from com.wclausen.work.config
         val repo = RepositoryBuilder().findGitDir(workingDir).build()
         val currentTask = RealTaskManager().getCurrentTask()!!
 //        println(

@@ -9,7 +9,7 @@ import com.squareup.workflow.Snapshot
 import com.squareup.workflow.Worker
 import com.squareup.workflow.action
 import com.wclausen.work.base.WorkState
-import com.wclausen.work.base.getTaskId
+import com.wclausen.work.base.requireExecuting
 import com.wclausen.work.command.base.Command
 import com.wclausen.work.command.base.CommandOutputWorkflow
 import com.wclausen.work.command.base.Output
@@ -24,7 +24,7 @@ class CommitWorkflow @Inject constructor(
 
     companion object {
         const val SUCCESS_MESSAGE = "Successfully committed to git"
-        const val NO_TASK_ERROR_MESSAGE = "You must select a task before commenting"
+        const val NO_TASK_ERROR_MESSAGE = "You must select a task before committing"
         const val COMMIT_IN_PROGRESS_MESSAGE = "Committing to git"
         const val FAILED_TO_COMMIT_MESSAGE = "Failed to commit to git"
 
@@ -57,9 +57,10 @@ class CommitWorkflow @Inject constructor(
         state: State,
         context: RenderContext<State, Output<Unit>>
     ) {
+        val executingProps = props.requireExecuting()
         when (state) {
             is State.PromptForCommitMessage -> {
-                context.output(Command.Prompt(getPromptMessage(props.getTaskId())) { message ->
+                context.output(Command.Prompt(getPromptMessage(executingProps.taskId)) { message ->
                     context.actionSink.send(action {
                         nextState = State.ReceivedCommitMessage(message)
                     })

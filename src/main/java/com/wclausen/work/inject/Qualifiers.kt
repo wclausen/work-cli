@@ -13,3 +13,9 @@ annotation class CommentCommandRunner
 
 @Qualifier
 annotation class CommitCommandRunner
+
+@Qualifier
+annotation class ConfigFile
+
+@Qualifier
+annotation class WorkLogFile

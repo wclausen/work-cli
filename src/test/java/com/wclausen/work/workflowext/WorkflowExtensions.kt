@@ -14,8 +14,15 @@ fun <PropsT, OutputT : Any, RenderingT> WorkflowTester<PropsT, OutputT, Renderin
 
 fun <T> Output<T>.assertIsPrompt(expectedText: String): Command.Prompt {
     val output = this as Output.InProgress
-    val prompt = output.command as Command.Prompt
-    return prompt.assertIsPrompt(expectedText)
+    try {
+        val prompt = output.command as Command.Prompt
+        return prompt.assertIsPrompt(expectedText)
+    } catch (e: ClassCastException) {
+        throw IllegalArgumentException(
+            "Expected Command.Prompt with text $expectedText. Received: ${output.command}",
+            e
+        )
+    }
 }
 
 fun Command.Prompt.assertIsPrompt(expectedText: String): Command.Prompt {

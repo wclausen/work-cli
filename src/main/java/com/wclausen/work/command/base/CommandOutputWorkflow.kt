@@ -2,6 +2,7 @@ package com.wclausen.work.command.base
 
 import com.github.michaelbull.result.Result
 import com.squareup.workflow.StatefulWorkflow
+import com.wclausen.work.base.WorkUpdate
 
 /**
  * Command that captures the possible types of output from Workflows.
@@ -13,6 +14,8 @@ import com.squareup.workflow.StatefulWorkflow
 sealed class Output<out T> {
 
     data class InProgress(val command: Command) : Output<Nothing>()
+
+    data class Log(val workUpdate: WorkUpdate) : Output<Nothing>()
 
     data class Final<T>(val result: Result<T, Throwable>) : Output<T>()
 }

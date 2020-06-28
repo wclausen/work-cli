@@ -5,8 +5,6 @@ import com.squareup.workflow.testing.testFromState
 import com.wclausen.work.base.WorkState
 import com.wclausen.work.command.base.Command
 import com.wclausen.work.command.start.StartWorkflow.Companion.LOADING_TASKS_FAILED_MESSAGE
-import com.wclausen.work.config.Config
-import com.wclausen.work.config.JiraConfig
 import com.wclausen.work.fake.FakeGitService
 import com.wclausen.work.fake.FakeJiraService
 import com.wclausen.work.workflowext.assertContainsMessage
@@ -23,10 +21,9 @@ class StartWorkflowTest {
 
     @Test
     fun `GIVEN no errors WHEN workflow runs THEN completes successfully`() {
-        val config = Config(JiraConfig("user@email.com", "fake_jira_token"))
         val fakeJiraService = FakeJiraService()
         StartWorkflow(fakeJiraService, FakeGitService()).testFromStart(WorkState.Waiting) {
-            first().assertIsMessage("Loading jira tasks...")
+            first().assertIsMessage(StartWorkflow.LOADING_TASKS_MESSAGE)
             then().assertIsMessage(formattedTaskList(fakeJiraService.getTasksForCurrentUserResponse().issues))
             then().assertIsPrompt("Please select a task").nextAction("1")
             then().multipleCommands({
@@ -46,7 +43,7 @@ class StartWorkflowTest {
         val fakeJiraService = FakeJiraService()
         fakeJiraService.throws = true
         StartWorkflow(fakeJiraService, FakeGitService()).testFromStart(WorkState.Waiting) {
-            first().assertIsMessage("Loading jira tasks...")
+            first().assertIsMessage(StartWorkflow.LOADING_TASKS_MESSAGE)
             then().assertIsMessage(LOADING_TASKS_FAILED_MESSAGE)
         }
     }
