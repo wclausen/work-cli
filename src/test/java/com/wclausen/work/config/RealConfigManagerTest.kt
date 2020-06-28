@@ -4,13 +4,15 @@ import com.github.michaelbull.result.get
 import com.github.michaelbull.result.getError
 import com.google.common.truth.Truth.assertThat
 import com.squareup.moshi.Moshi
+import com.wclausen.work.config.RealConfigManager.Companion.FAILED_TO_PARSE_JSON_MESSAGE
+import com.wclausen.work.config.RealConfigManager.Companion.UNABLE_TO_OPEN_CONFIG_FILE_MESSAGE
 import okio.buffer
 import okio.sink
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 
-class RealConfigReaderTest {
+class RealConfigManagerTest {
 
     @get:Rule
     val tempFolder = TemporaryFolder()
@@ -19,26 +21,25 @@ class RealConfigReaderTest {
     fun `GIVEN missing file WHEN reading config THEN reports unable to open`() {
         val missingFile = tempFolder.newFile("missing_file")
         missingFile.delete()
-        val error = RealConfigReader(missingFile).getConfig().getError()!!
-        assertThat(error.message).contains(RealConfigReader.UNABLE_TO_OPEN_CONFIG_FILE_MESSAGE)
+        val error = RealConfigManager(missingFile.toPath()).getConfig().getError()!!
+        assertThat(error.message).contains(UNABLE_TO_OPEN_CONFIG_FILE_MESSAGE)
     }
 
     @Test
     fun `GIVEN empty file WHEN reading config THEN reports unable to parse json`() {
         val emptyFile = tempFolder.newFile("empty_file")
-        val error = RealConfigReader(emptyFile).getConfig().getError()!!
-        assertThat(error.message).contains(RealConfigReader.FAILED_TO_PARSE_JSON_MESSAGE)
+        val error = RealConfigManager(emptyFile.toPath()).getConfig().getError()!!
+        assertThat(error.message).contains(FAILED_TO_PARSE_JSON_MESSAGE)
     }
 
     @Test
     fun `GIVEN malformed json in file WHEN reading config THEN reports unable to parse json`() {
         val badJsonFile = tempFolder.newFile("bad_json")
-        badJsonFile.sink()
-            .buffer()
+        badJsonFile.sink().buffer()
             .writeUtf8("{ \"a_field\": \"some_value\"}") // wrong json contents
             .close()
-        val error = RealConfigReader(badJsonFile).getConfig().getError()!!
-        assertThat(error.message).contains(RealConfigReader.FAILED_TO_PARSE_JSON_MESSAGE)
+        val error = RealConfigManager(badJsonFile.toPath()).getConfig().getError()!!
+        assertThat(error.message).contains(RealConfigManager.FAILED_TO_PARSE_JSON_MESSAGE)
     }
 
     @Test
@@ -49,7 +50,7 @@ class RealConfigReaderTest {
             .buffer()
             .writeUtf8(expectedConfig.asJson()) // wrong json contents
             .close()
-        val config = RealConfigReader(configFile).getConfig().get()!!
+        val config = RealConfigManager(configFile.toPath()).getConfig().get()!!
         assertThat(config).isEqualTo(expectedConfig)
     }
 
